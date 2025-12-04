@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../auth/view/login_view.dart';
+
 class OnboardingMotionScreen extends StatelessWidget {
   const OnboardingMotionScreen({super.key});
 
@@ -28,7 +31,9 @@ class OnboardingMotionScreen extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: 1,
                     backgroundColor: Color(0xFF3A3A3C),
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFAEFB2A)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFAEFB2A),
+                    ),
                     minHeight: 6,
                   ),
                 ),
@@ -37,15 +42,10 @@ class OnboardingMotionScreen extends StatelessWidget {
 
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                decoration: const BoxDecoration(
-
-                ),
+                decoration: const BoxDecoration(),
                 child: Column(
                   children: [
-                    Image.asset(
-                      'assets/images/logo.png',
-                      height: 60,
-                    ),
+                    Image.asset('assets/images/logo.png', height: 60),
                     // Heading
                     const Text(
                       'Motion',
@@ -89,6 +89,12 @@ class OnboardingMotionScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: ElevatedButton(
                   onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginView(),
+                      ),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFAEFB2A),
