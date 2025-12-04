@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:motion_ai/feature/onboarding/view/onboarding_screen.dart';
+import '../../../screens/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
