@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:motion_ai/screens/onboarding_screen.dart';
+import 'package:motion_ai/feature/onboarding/view/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -41,10 +41,7 @@ class _SplashScreenState extends State<SplashScreen> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF2E3D28),
-              Color(0xFF000000),
-            ],
+            colors: [Color(0xFF2E3D28), Color(0xFF000000)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -58,10 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
               scale: _scale,
               duration: const Duration(milliseconds: 1200),
               curve: Curves.easeOutBack,
-              child: Image.asset(
-                "assets/images/logo.png",
-                width: 150,
-              ),
+              child: Image.asset("assets/images/logo.png", width: 150),
             ),
           ),
         ),
