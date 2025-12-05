@@ -38,10 +38,7 @@ class _DashboardViewState extends State<DashboardView> {
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF2E3D28),
-              Color(0xFF000000),
-            ],
+            colors: [Color(0xFF2E3D28), Color(0xFF000000)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
