@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:motion_ai/feature/auth/view/signup_view.dart';
+import 'package:motion_ai/feature/home/view/dashboard_view.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -172,7 +173,14 @@ class _LoginViewState extends State<LoginView> {
                   ],
                 ),
                 ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DashboardView(),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF98C149),
                     minimumSize: const Size(double.infinity, 50),
