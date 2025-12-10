@@ -1,12 +1,15 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:motion_ai/feature/home/view/meetings_view.dart';
+import 'package:motion_ai/feature/home/view/mindspace_view.dart';
+import 'package:motion_ai/feature/home/view/reports_view.dart';
 
 class BottomNavWidget extends StatelessWidget {
-  final int selectedIndex;
+  int selectedIndex = 0;
   final Function(int) onItemTapped;
 
-  const BottomNavWidget({
+  BottomNavWidget({
     super.key,
     required this.selectedIndex,
     required this.onItemTapped,
@@ -26,11 +29,7 @@ class BottomNavWidget extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(
-                  icon: Icons.home_filled,
-                  label: 'Home',
-                  index: 0,
-                ),
+                _buildNavItem(icon: Icons.home_filled, label: 'Home', index: 0),
                 _buildNavItem(
                   icon: Icons.mic_none,
                   label: 'Meetings',

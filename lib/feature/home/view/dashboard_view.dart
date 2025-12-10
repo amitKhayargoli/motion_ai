@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:motion_ai/feature/home/view/meetings_view.dart';
+import 'package:motion_ai/feature/home/view/mindspace_view.dart';
+import 'package:motion_ai/feature/home/view/reports_view.dart';
 import 'package:motion_ai/feature/home/view/widgets/bottom_nav_widget.dart';
 import 'package:motion_ai/feature/home/view/widgets/mobile_recordings_widget.dart';
 import 'package:motion_ai/feature/home/view/widgets/today_card_widget.dart';
@@ -19,6 +22,12 @@ class _DashboardViewState extends State<DashboardView> {
     });
   }
 
+  List<Widget> pages = [
+    const MeetingsView(),
+    const MindspaceView(),
+    const ReportsView(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,44 +42,46 @@ class _DashboardViewState extends State<DashboardView> {
         selectedIndex: _selectedIndex,
         onItemTapped: _onItemTapped,
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF2E3D28), Color(0xFF000000)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                const Center(
-                  child: Text(
-                    'MOTION WORKSPACE',
-                    style: TextStyle(
-                      fontFamily: 'sf_pro',
-                      color: Colors.white70,
-                      fontSize: 14,
-                      letterSpacing: 1.5,
-                    ),
+      body: _selectedIndex == 0
+          ? Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF2E3D28), Color(0xFF000000)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      const Center(
+                        child: Text(
+                          'MOTION WORKSPACE',
+                          style: TextStyle(
+                            fontFamily: 'sf_pro',
+                            color: Colors.white70,
+                            fontSize: 14,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      const TodayCardWidget(),
+                      const SizedBox(height: 30),
+                      const MobileRecordingsWidget(),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 30),
-                const TodayCardWidget(),
-                const SizedBox(height: 30),
-                const MobileRecordingsWidget(),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            )
+          : pages[_selectedIndex],
     );
   }
 }
