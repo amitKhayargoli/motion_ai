@@ -18,12 +18,18 @@ class RecordingItemWidget extends StatelessWidget {
       title: const Text(
         'Weekly Meeting',
         style: TextStyle(
-            fontFamily: 'sf_pro', color: Colors.white, fontSize: 16),
+          fontFamily: 'sf_pro',
+          color: Colors.white,
+          fontSize: 16,
+        ),
       ),
       subtitle: const Text(
         'Fri, Nov 21 8:34-8:35 PM',
         style: TextStyle(
-            fontFamily: 'sf_pro', color: Colors.white70, fontSize: 13),
+          fontFamily: 'sf_pro',
+          color: Colors.white70,
+          fontSize: 13,
+        ),
       ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -35,9 +41,10 @@ class RecordingItemWidget extends StatelessWidget {
           'AK',
           style: TextStyle(
             fontSize: 14,
-              fontFamily: 'sf_pro',
-              color: Colors.black,
-              fontWeight: FontWeight.bold),
+            fontFamily: 'sf_pro',
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

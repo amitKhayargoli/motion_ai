@@ -25,18 +25,20 @@ class TodayCardWidget extends StatelessWidget {
                   Text(
                     '21 NOV FRIDAY',
                     style: TextStyle(
-                        fontFamily: 'sf_pro',
-                        color: Colors.white70,
-                        fontSize: 12),
+                      fontFamily: 'sf_pro',
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
                   ),
                   SizedBox(height: 4),
                   Text(
                     'Today',
                     style: TextStyle(
-                        fontFamily: 'play_fair_display',
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.bold),
+                      fontFamily: 'play_fair_display',
+                      color: Colors.white,
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -51,13 +53,19 @@ class TodayCardWidget extends StatelessWidget {
                   color: Colors.black,
                   size: 40,
                 ),
-              )
+              ),
             ],
           ),
           const SizedBox(height: 20),
-          const TaskItemWidget(task: 'Attend Sprint Meeting', isCompleted: true),
+          const TaskItemWidget(
+            task: 'Attend Sprint Meeting',
+            isCompleted: true,
+          ),
           const SizedBox(height: 10),
-          const TaskItemWidget(task: 'Review Sprint Backlog', isCompleted: false),
+          const TaskItemWidget(
+            task: 'Review Sprint Backlog',
+            isCompleted: false,
+          ),
         ],
       ),
     );

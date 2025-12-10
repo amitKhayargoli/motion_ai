@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:motion_ai/feature/home/view/widgets/meet_recording_item_widget.dart';
 import 'package:motion_ai/feature/home/view/widgets/recording_item_widget.dart';
 
-class MobileRecordingsWidget extends StatelessWidget {
-  const MobileRecordingsWidget({super.key});
+class MeetRecordingsWidget extends StatelessWidget {
+  const MeetRecordingsWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +13,7 @@ class MobileRecordingsWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Mobile Recordings',
+              'Meeting Recordings',
               style: TextStyle(
                 fontFamily: 'sf_pro',
                 color: Colors.white,
@@ -33,11 +34,9 @@ class MobileRecordingsWidget extends StatelessWidget {
             ),
           ],
         ),
-        const RecordingItemWidget(),
+        const MeetRecordingItemWidget(),
         const SizedBox(height: 10),
-        const RecordingItemWidget(),
-        const SizedBox(height: 10),
-
+        const MeetRecordingItemWidget(),
       ],
     );
   }
