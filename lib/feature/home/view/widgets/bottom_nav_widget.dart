@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:motion_ai/feature/home/view/meetings_view.dart';
 import 'package:motion_ai/feature/home/view/mindspace_view.dart';
-import 'package:motion_ai/feature/home/view/reports_view.dart';
+import 'package:motion_ai/feature/home/view/notes_view.dart';
 
 class BottomNavWidget extends StatelessWidget {
   int selectedIndex = 0;
@@ -42,7 +42,7 @@ class BottomNavWidget extends StatelessWidget {
                 ),
                 _buildNavItem(
                   icon: Icons.description_outlined,
-                  label: 'Reports',
+                  label: 'Notes',
                   index: 3,
                 ),
               ],
