@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:motion_ai/feature/home/view/widgets/task_item_widget.dart';
+import 'package:intl/intl.dart';
 
 class TodayCardWidget extends StatelessWidget {
   const TodayCardWidget({super.key});
@@ -19,11 +20,13 @@ class TodayCardWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '21 NOV FRIDAY',
+                    DateFormat(
+                      'dd MMM EEEE',
+                    ).format(DateTime.now()).toUpperCase(),
                     style: TextStyle(
                       fontFamily: 'sf_pro',
                       color: Colors.white70,
