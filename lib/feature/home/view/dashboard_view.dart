@@ -25,13 +25,24 @@ class _DashboardViewState extends State<DashboardView> {
     const HomeView(),
     const MeetingsView(),
     const MindspaceView(),
-    const NotesView(),
+    const NotesListView(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
+      floatingActionButton: (_selectedIndex == 0 || _selectedIndex == 3)
+          ? FloatingActionButton(
+              onPressed: () {},
+              backgroundColor: const Color(0xFFAEFB2A),
+              elevation: 8,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add, color: Colors.black, size: 30),
+            )
+          : null,
+
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: BottomNavWidget(
         selectedIndex: _selectedIndex,
         onItemTapped: _onItemTapped,
