@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:motion_ai/feature/auth/view/login_view.dart';
-import 'package:motion_ai/feature/auth/view/signup_view.dart';
-import 'package:motion_ai/feature/home/view/dashboard_view.dart';
 
 class SignupView extends StatefulWidget {
   const SignupView({super.key});
