@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:motion_ai/feature/auth/view/login_view.dart';
+import 'package:motion_ai/feature/auth/presentation/pages/signup_view.dart';
+import 'package:motion_ai/feature/home/presentation/pages/dashboard_view.dart';
 
-class SignupView extends StatefulWidget {
-  const SignupView({super.key});
+class LoginView extends StatefulWidget {
+  const LoginView({super.key});
 
   @override
-  State<SignupView> createState() => _SignupViewState();
+  State<LoginView> createState() => _LoginViewState();
 }
 
-class _SignupViewState extends State<SignupView> {
+class _LoginViewState extends State<LoginView> {
   bool _rememberMe = false;
   bool _passwordVisible = false;
   late final TextEditingController _emailController;
@@ -62,7 +63,7 @@ class _SignupViewState extends State<SignupView> {
                   child: Image.asset('assets/images/logo.png', height: 60),
                 ),
                 const Text(
-                  'Sign up a new\nAccount',
+                  'Sign in to your\nAccount',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'sf_pro',
@@ -76,7 +77,7 @@ class _SignupViewState extends State<SignupView> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
-                      "Already a user? ",
+                      "Don't have an account? ",
                       style: TextStyle(
                         fontFamily: 'sf_pro',
                         fontSize: 15,
@@ -89,12 +90,12 @@ class _SignupViewState extends State<SignupView> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const LoginView(),
+                            builder: (context) => const SignupView(),
                           ),
                         );
                       },
                       child: const Text(
-                        'Sign in',
+                        'Sign Up',
                         style: TextStyle(
                           fontFamily: 'sf_pro',
                           fontSize: 15,
@@ -158,15 +159,25 @@ class _SignupViewState extends State<SignupView> {
                         ),
                       ],
                     ),
+                    TextButton(
+                      onPressed: () {},
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          fontFamily: 'sf_pro',
+                          color: Color(0xFF6A9BEE),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // Handle sign up logic
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const LoginView(),
+                        builder: (context) => const DashboardView(),
                       ),
                     );
                   },
@@ -178,7 +189,7 @@ class _SignupViewState extends State<SignupView> {
                     ),
                   ),
                   child: const Text(
-                    'Sign up',
+                    'Sign in',
                     style: TextStyle(
                       fontFamily: 'sf_pro',
                       fontSize: 20,

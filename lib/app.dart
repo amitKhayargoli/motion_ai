@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:motion_ai/feature/splash/view/splash_screen.dart';
+import 'package:motion_ai/feature/splash/presentation/pages/splash_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
