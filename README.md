@@ -4,6 +4,13 @@ Motion: Local-First AI Productivity Platform 🧠
 
 Motion is a next-generation, unified mobile productivity platform designed to eliminate tool fragmentation. Built with an "Offline-First" architecture, it seamlessly captures meeting notes, voice recordings, tasks, and visual diagrams, and uses Vector Search AI to enable powerful semantic information retrieval, even when you're offline.
 
+<div style="display:flex">
+<img width="459" height="827" alt="image" src="https://github.com/user-attachments/assets/4e5451f8-bfc8-43e8-a8ab-c20b17ad6c1e" />
+<img width="459" height="827" alt="image" src="https://github.com/user-attachments/assets/6e2959ab-753b-4ce8-96e2-d36da39df51d" />
+</div>
+
+
+
 <h2 style="font-size: 1.8em; font-weight: 800; padding-top: 15px; padding-bottom: 5px;">✨ Features</h2>
 
 Motion is designed to transform unstructured meeting data into structured, actionable knowledge.
