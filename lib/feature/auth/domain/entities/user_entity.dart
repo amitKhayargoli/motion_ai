@@ -1,10 +1,12 @@
 import 'package:equatable/equatable.dart';
 
+enum userRole { admin, user }
+
 class UserEntity extends Equatable {
   final String? userId;
   final String email;
   final String password;
-  final String? role;
+  final userRole? role;
   final DateTime? createdAt;
 
   const UserEntity({
