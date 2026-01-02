@@ -2,7 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 import 'package:motion_ai/core/error/failures.dart';
 import 'package:motion_ai/core/usecases/app_usecase.dart';
-import 'package:motion_ai/feature/auth/domain/repositories/user_repository.dart';
+import 'package:motion_ai/feature/auth/domain/repositories/auth_repository.dart';
 
 class DeleteUserUsecaseParams extends Equatable {
   final String userId;
@@ -15,7 +15,7 @@ class DeleteUserUsecaseParams extends Equatable {
 
 class DeleteUserUsecase
     implements UseCaseWithParams<void, DeleteUserUsecaseParams> {
-  final IUserRepository _userRepository;
+  final IAuthRepository _userRepository;
   DeleteUserUsecase(this._userRepository);
   @override
   Future<Either<Failure, void>> call(DeleteUserUsecaseParams params) {
