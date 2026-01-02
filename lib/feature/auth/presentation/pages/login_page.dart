@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:motion_ai/feature/auth/presentation/pages/signup_view.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:motion_ai/core/utils/snackbar_utils.dart';
+import 'package:motion_ai/core/widgets/custom_button.dart';
+import 'package:motion_ai/feature/auth/presentation/pages/signup_page.dart';
+import 'package:motion_ai/feature/auth/presentation/state/auth_state.dart';
+import 'package:motion_ai/feature/auth/presentation/view_model/auth_viewmodel.dart';
 import 'package:motion_ai/feature/home/presentation/pages/dashboard_view.dart';
 
-class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+class LoginPage extends ConsumerStatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<LoginView> createState() => _LoginViewState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginViewState extends State<LoginView> {
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
   bool _rememberMe = false;
   bool _passwordVisible = false;
   late final TextEditingController _emailController;
@@ -29,8 +35,33 @@ class _LoginViewState extends State<LoginView> {
     super.dispose();
   }
 
+  Future<void> _handleLogin() async {
+    if (_formKey.currentState!.validate()) {
+      await ref
+          .read(authViewModelProvider.notifier)
+          .login(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authViewModelProvider);
+
+    ref.listen<AuthState>(authViewModelProvider, (previous, next) {
+      if (next.status == AuthStatus.authenticated) {
+        // dashboard
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardView()),
+        );
+      } else if (next.status == AuthStatus.error && next.errorMessage != null) {
+        // error message
+        SnackbarUtils.showError(context, next.errorMessage!);
+      }
+    });
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -90,7 +121,7 @@ class _LoginViewState extends State<LoginView> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const SignupView(),
+                            builder: (context) => const SignupPage(),
                           ),
                         );
                       },
@@ -107,25 +138,35 @@ class _LoginViewState extends State<LoginView> {
                   ],
                 ),
                 const SizedBox(height: 30),
-                _buildTextField(label: 'Email', controller: _emailController),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  label: 'Password',
-                  controller: _passwordController,
-                  obscureText: !_passwordVisible,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _passwordVisible
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: Colors.white54,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _passwordVisible = !_passwordVisible;
-                      });
-                    },
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildTextField(
+                        label: 'Email',
+                        controller: _emailController,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        label: 'Password',
+                        controller: _passwordController,
+                        obscureText: !_passwordVisible,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _passwordVisible
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: Colors.white54,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _passwordVisible = !_passwordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -172,7 +213,9 @@ class _LoginViewState extends State<LoginView> {
                     ),
                   ],
                 ),
-                ElevatedButton(
+                CustomButton(
+                  text: 'Sign in',
+                  isLoading: authState.status == AuthStatus.loading,
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -181,22 +224,8 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF98C149),
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Sign in',
-                    style: TextStyle(
-                      fontFamily: 'sf_pro',
-                      fontSize: 20,
-                      color: Colors.white,
-                    ),
-                  ),
                 ),
+
                 const SizedBox(height: 12),
                 const Row(
                   children: [

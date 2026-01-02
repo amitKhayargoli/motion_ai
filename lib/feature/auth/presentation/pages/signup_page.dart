@@ -1,18 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:motion_ai/feature/auth/presentation/pages/login_view.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
+import 'package:motion_ai/core/utils/snackbar_utils.dart';
+import 'package:motion_ai/core/widgets/custom_button.dart';
+import 'package:motion_ai/feature/auth/presentation/pages/login_page.dart';
+import 'package:motion_ai/feature/auth/presentation/state/auth_state.dart';
+import 'package:motion_ai/feature/auth/presentation/view_model/auth_viewmodel.dart';
 
-class SignupView extends StatefulWidget {
-  const SignupView({super.key});
+import '../../data/models/auth_hive_model.dart';
+
+class SignupPage extends ConsumerStatefulWidget {
+  const SignupPage({super.key});
 
   @override
-  State<SignupView> createState() => _SignupViewState();
+  ConsumerState<SignupPage> createState() => _SignupPageState();
 }
 
-class _SignupViewState extends State<SignupView> {
+class _SignupPageState extends ConsumerState<SignupPage> {
+  final _formKey = GlobalKey<FormState>();
   bool _rememberMe = false;
   bool _passwordVisible = false;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
+
+  Future<void> _handleSignup() async {
+    ref.read(authViewModelProvider.notifier).clearError();
+
+    if (_formKey.currentState!.validate()) {
+      ref
+          .read(authViewModelProvider.notifier)
+          .register(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+    }
+    final box = Hive.box<AuthHiveModel>('authBox');
+    print('--- All Hive Users ---');
+    for (var user in box.values) {
+      print('Email: ${user.email}, Password: ${user.password}');
+    }
+  }
 
   @override
   void initState() {
@@ -30,6 +57,26 @@ class _SignupViewState extends State<SignupView> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authViewModelProvider);
+
+    // listen for auth state changes
+    // ref.read
+    // ref.watch
+
+    ref.listen<AuthState>(authViewModelProvider, (previous, next) {
+      if (next.status == AuthStatus.error) {
+        SnackbarUtils.showError(
+          context,
+          next.errorMessage ?? "Registration failed",
+        );
+      } else if (next.status == AuthStatus.registered) {
+        SnackbarUtils.showSuccess(
+          context,
+          next.errorMessage ?? "Registration Successful",
+        );
+      }
+    });
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -89,7 +136,7 @@ class _SignupViewState extends State<SignupView> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const LoginView(),
+                            builder: (context) => const LoginPage(),
                           ),
                         );
                       },
@@ -106,25 +153,55 @@ class _SignupViewState extends State<SignupView> {
                   ],
                 ),
                 const SizedBox(height: 30),
-                _buildTextField(label: 'Email', controller: _emailController),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  label: 'Password',
-                  controller: _passwordController,
-                  obscureText: !_passwordVisible,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _passwordVisible
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: Colors.white54,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _passwordVisible = !_passwordVisible;
-                      });
-                    },
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildTextField(
+                        label: 'Email',
+                        controller: _emailController,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Email cannot be empty';
+                          }
+                          // Basic email regex
+                          final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          if (!emailRegex.hasMatch(value.trim())) {
+                            return 'Enter a valid email';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                        _buildTextField(
+                          label: 'Password',
+                          controller: _passwordController,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Password cannot be empty';
+                            }
+                            if (value.trim().length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                          obscureText: !_passwordVisible,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _passwordVisible
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: Colors.white54,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _passwordVisible = !_passwordVisible;
+                              });
+                            },
+                          ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -160,32 +237,14 @@ class _SignupViewState extends State<SignupView> {
                     ),
                   ],
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    // Handle sign up logic
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoginView(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF98C149),
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Sign up',
-                    style: TextStyle(
-                      fontFamily: 'sf_pro',
-                      fontSize: 20,
-                      color: Colors.white,
-                    ),
-                  ),
+
+
+                CustomButton(
+                  text: 'Sign Up',
+                  isLoading: authState.status == AuthStatus.loading,
+                  onPressed: _handleSignup,
                 ),
+
                 const SizedBox(height: 12),
                 const Row(
                   children: [
@@ -268,6 +327,7 @@ class _SignupViewState extends State<SignupView> {
     required TextEditingController controller,
     bool obscureText = false,
     Widget? suffixIcon,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,6 +349,7 @@ class _SignupViewState extends State<SignupView> {
             fontFamily: 'sf_pro',
             fontSize: 16,
           ),
+          validator: validator,
           decoration: InputDecoration(
             suffixIcon: suffixIcon,
             contentPadding: const EdgeInsets.symmetric(
@@ -302,6 +363,14 @@ class _SignupViewState extends State<SignupView> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Color(0xFF98C149)),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.redAccent),
             ),
           ),
         ),

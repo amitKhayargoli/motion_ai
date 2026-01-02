@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:motion_ai/feature/home/presentation/pages/widgets/gradient_scaffold_widget.dart';
-import '../../../auth/presentation/pages/login_view.dart';
+import '../../../auth/presentation/pages/login_page.dart';
 
 class OnboardingMotionScreen extends StatelessWidget {
   const OnboardingMotionScreen({super.key});
@@ -76,7 +76,7 @@ class OnboardingMotionScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const LoginView()),
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
