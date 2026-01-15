@@ -1,19 +1,28 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:motion_ai/core/services/hive/hive_service.dart';
+import 'package:motion_ai/core/services/storage/user_session_service.dart';
 import 'package:motion_ai/feature/auth/data/datasources/auth_datasource.dart';
 import 'package:motion_ai/feature/auth/data/models/auth_hive_model.dart';
 
-final authLocalDatasourceProvider = Provider.autoDispose<IAuthDataSource>((
+final authLocalDatasourceProvider = Provider.autoDispose<IAuthLocalDataSource>((
   ref,
 ) {
   final hiveService = ref.watch(hiveServiceProvider);
-  return AuthLocalDatasource(hiveService: hiveService);
+  final userSessionService = ref.read(userSessionServiceProvider);
+  return AuthLocalDatasource(
+    hiveService: hiveService,
+    userSessionService: userSessionService,
+  );
 });
 
-class AuthLocalDatasource implements IAuthDataSource {
+class AuthLocalDatasource implements IAuthLocalDataSource {
   final HiveService hiveService;
+  final UserSessionService userSessionService;
 
-  AuthLocalDatasource({required this.hiveService});
+  AuthLocalDatasource({
+    required this.hiveService,
+    required this.userSessionService,
+  });
 
   @override
   Future<AuthHiveModel> register(AuthHiveModel user) async {
@@ -23,7 +32,20 @@ class AuthLocalDatasource implements IAuthDataSource {
 
   @override
   Future<AuthHiveModel?> login(String email, String password) async {
-    return hiveService.loginUser(email, password);
+    try {
+      final user = await hiveService.loginUser(email, password);
+      // user ko details lai shared prefs ma save garne
+      if (user != null) {
+        await userSessionService.saveUserSession(
+          userId: user.userId!,
+          userEmail: user.email,
+        );
+      }
+
+      return user;
+    } catch (e) {
+      return Future.value(null);
+    }
   }
 
   @override

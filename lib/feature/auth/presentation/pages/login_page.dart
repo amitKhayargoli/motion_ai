@@ -53,8 +53,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
       if (next.status == AuthStatus.authenticated) {
         // dashboard
-        Navigator.push(
-          context,
+        Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const DashboardView()),
         );
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
@@ -217,6 +216,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   text: 'Sign in',
                   isLoading: authState.status == AuthStatus.loading,
                   onPressed: () {
+                    _handleLogin();
                     Navigator.push(
                       context,
                       MaterialPageRoute(

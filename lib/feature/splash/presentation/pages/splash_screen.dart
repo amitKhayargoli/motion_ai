@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:motion_ai/core/services/storage/user_session_service.dart';
+import 'package:motion_ai/feature/home/presentation/pages/dashboard_view.dart';
+import 'package:motion_ai/feature/home/presentation/pages/home_view.dart';
+import 'package:motion_ai/routes/app_routes.dart';
 import '../../../onboarding/presentation/pages/onboarding_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   double _opacity = 0;
   double _scale = 0.6;
 
@@ -24,13 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
       });
     });
 
-    // Navigate after animation duration
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
-    });
+    _navigateToNext();
   }
 
   @override
@@ -61,5 +60,19 @@ class _SplashScreenState extends State<SplashScreen> {
         ),
       ),
     );
+  }
+
+  void _navigateToNext() async {
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+    //check if user is already logged in
+    final userSessionService = ref.read(userSessionServiceProvider);
+    final isLoggedIn = userSessionService.isLoggedIn();
+
+    if (isLoggedIn) {
+      AppRoutes.pushReplacement(context, const DashboardView());
+    } else {
+      AppRoutes.pushReplacement(context, const OnboardingScreen());
+    }
   }
 }
