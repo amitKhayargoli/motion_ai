@@ -17,11 +17,15 @@ class AuthHiveModel extends HiveObject {
   final String? password;
   @HiveField(3)
   final DateTime? createdAt;
+  //username
+  @HiveField(4)
+  final String? username;
 
   AuthHiveModel({
     String? userId,
     required this.email,
     required this.password,
+    this.username,
 
     DateTime? createdAt,
   }) : userId = userId ?? Uuid().v4(),
@@ -33,11 +37,18 @@ class AuthHiveModel extends HiveObject {
       email: email,
       password: password,
       createdAt: createdAt,
+      username: username,
     );
   }
 
   factory AuthHiveModel.fromEntity(AuthEntity entity) {
-    return AuthHiveModel(email: entity.email, password: entity.password);
+    return AuthHiveModel(
+      email: entity.email,
+      password: entity.password,
+      username: entity.username,
+      userId: entity.userId,
+      createdAt: entity.createdAt,
+    );
   }
 
   static List<AuthEntity> toEntityList(List<AuthHiveModel> models) {
