@@ -3,6 +3,7 @@ class ApiEndpoints {
 
   // Base URL - change this for production
   static const String baseUrl = 'http://10.0.2.2:3000/api';
+  // static const String baseUrl = 'http://192.168.137.5/api';
   //static const String baseUrl = 'http://localhost:3000/api/v1';
   // For Android Emulator use: 'http://10.0.2.2:3000/api/v1'
   // For iOS Simulator use: 'http://localhost:5000/api/v1'
@@ -11,8 +12,14 @@ class ApiEndpoints {
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
 
-  // ============ Student Endpoints ============
+  // ============ User Endpoints ============
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String getAllUsers = '/auth/users';
+
+  // ============ AudioFile Endpoints ============
+  static const String uploadAudio = '/audio/upload';
+  static const String myAudioFiles = '/audio/my-files';
+  static const String getAudioById = '/audio/:id';
+  static const String deleteAudio = '/audio/delete';
 }

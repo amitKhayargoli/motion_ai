@@ -2,19 +2,23 @@ import 'package:dio/dio.dart';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:motion_ai/core/api/api_endpoints.dart';
+import 'package:motion_ai/core/providers/providers.dart';
+import 'package:motion_ai/core/services/storage/token_service.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 // Provider for ApiClient
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient();
+  final tokenService = ref.read(tokenServiceProvider);
+  return ApiClient(tokenService: tokenService);
 });
 
 class ApiClient {
+  final TokenService _tokenService;
   late final Dio _dio;
 
-  ApiClient() {
+  ApiClient({required TokenService tokenService})
+    : _tokenService = tokenService {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiEndpoints.baseUrl,
@@ -28,7 +32,7 @@ class ApiClient {
     );
 
     // Add interceptors
-    _dio.interceptors.add(_AuthInterceptor());
+    _dio.interceptors.add(_AuthInterceptor(tokenService: _tokenService));
 
     // Auto retry on network failures
     _dio.interceptors.add(
@@ -41,7 +45,6 @@ class ApiClient {
           Duration(seconds: 3),
         ],
         retryEvaluator: (error, attempt) {
-          // Retry on connection errors and timeouts, not on 4xx/5xx
           return error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
@@ -50,14 +53,13 @@ class ApiClient {
       ),
     );
 
-    // Only add logger in debug mode
+    // Pretty logger in debug mode
     if (kDebugMode) {
       _dio.interceptors.add(
         PrettyDioLogger(
           requestHeader: true,
           requestBody: true,
           responseBody: true,
-          responseHeader: false,
           error: true,
           compact: true,
         ),
@@ -67,7 +69,6 @@ class ApiClient {
 
   Dio get dio => _dio;
 
-  // GET request
   Future<Response> get(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -76,7 +77,6 @@ class ApiClient {
     return _dio.get(path, queryParameters: queryParameters, options: options);
   }
 
-  // POST request
   Future<Response> post(
     String path, {
     dynamic data,
@@ -91,7 +91,6 @@ class ApiClient {
     );
   }
 
-  // PUT request
   Future<Response> put(
     String path, {
     dynamic data,
@@ -106,7 +105,6 @@ class ApiClient {
     );
   }
 
-  // DELETE request
   Future<Response> delete(
     String path, {
     dynamic data,
@@ -121,7 +119,6 @@ class ApiClient {
     );
   }
 
-  // Multipart request for file uploads
   Future<Response> uploadFile(
     String path, {
     required FormData formData,
@@ -137,30 +134,29 @@ class ApiClient {
   }
 }
 
-// Auth Interceptor to add JWT token to requests
+// Auth Interceptor
 class _AuthInterceptor extends Interceptor {
-  final _storage = const FlutterSecureStorage();
-  static const String _tokenKey = 'auth_token';
+  final TokenService _tokenService;
+  _AuthInterceptor({required TokenService tokenService})
+    : _tokenService = tokenService;
 
   @override
   void onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    // Skip auth for public endpoints
     final publicEndpoints = [ApiEndpoints.login, ApiEndpoints.register];
 
     final isPublicGet =
         options.method == 'GET' &&
         publicEndpoints.any((endpoint) => options.path.startsWith(endpoint));
-
     final isAuthEndpoint = publicEndpoints.any(
       (endpoint) => options.path.startsWith(endpoint),
     );
 
     if (!isPublicGet && !isAuthEndpoint) {
-      final token = await _storage.read(key: _tokenKey);
-      if (token != null) {
+      final token = await _tokenService.getToken();
+      if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
       }
     }
@@ -170,11 +166,8 @@ class _AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    // Handle 401 Unauthorized - token expired
     if (err.response?.statusCode == 401) {
-      // Clear token and redirect to login
-      _storage.delete(key: _tokenKey);
-      // You can add navigation logic here or use a callback
+      // Optionally handle token expiration here
     }
     handler.next(err);
   }
