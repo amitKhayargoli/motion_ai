@@ -3,13 +3,13 @@ import 'package:hive/hive.dart';
 import 'package:motion_ai/core/constants/hive_table_constant.dart';
 import 'package:motion_ai/feature/auth/data/models/auth_hive_model.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:motion_ai/feature/audio_file/data/models/audio_file_hive_model.dart';
 
 final hiveServiceProvider = Provider<HiveService>((ref) {
   return HiveService();
 });
 
 class HiveService {
-  // Use constants for keys to avoid typos
   static const String currentUserKey = "currentUser";
 
   /// Initialize Hive and Register Adapters
@@ -22,13 +22,21 @@ class HiveService {
   }
 
   void _registerAdapters() {
+    // Register Auth adapter
     if (!Hive.isAdapterRegistered(HiveTableConstant.userTypeId)) {
       Hive.registerAdapter(AuthHiveModelAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(HiveTableConstant.audioFileTypeId)) {
+      Hive.registerAdapter(AudioFileHiveModelAdapter());
     }
   }
 
   Future<void> _openBoxes() async {
+    // Open auth box
     await Hive.openBox<AuthHiveModel>(HiveTableConstant.userTable);
+
+    await Hive.openBox<AudioFileHiveModel>(HiveTableConstant.audioFileTable);
   }
 
   Box<AuthHiveModel> get _authBox {
@@ -64,6 +72,7 @@ class HiveService {
   Future<bool> logout() async {
     try {
       await _authBox.clear();
+      await _audioBox.clear();
       return true;
     } catch (e) {
       return false;
@@ -78,14 +87,12 @@ class HiveService {
   /// Get user by email (filtering values)
   Future<AuthHiveModel?> getUserByEmail(String email) async {
     for (final user in _authBox.values) {
-      if (user.email.trim().toLowerCase() ==
-          email.trim().toLowerCase()) {
+      if (user.email.trim().toLowerCase() == email.trim().toLowerCase()) {
         return user;
       }
     }
     return null;
   }
-
 
   /// Get current user
   Future<AuthHiveModel?> getCurrentUser() async {
@@ -109,6 +116,49 @@ class HiveService {
   /// Check if email already exists
   Future<bool> isEmailExists(String email) async {
     return _authBox.values.any((user) => user.email == email);
+  }
+
+  Box<AudioFileHiveModel> get _audioBox {
+    if (!Hive.isBoxOpen(HiveTableConstant.audioFileTable)) {
+      throw Exception(
+        "Hive Box ${HiveTableConstant.audioFileTable} is not open. Did you call init()?",
+      );
+    }
+    return Hive.box<AudioFileHiveModel>(HiveTableConstant.audioFileTable);
+  }
+
+  // ================= AudioFile CRUD Operations ====================
+
+  /// Save / cache audio file
+  Future<void> saveAudio(AudioFileHiveModel audio) async {
+    await _audioBox.put(audio.id, audio);
+  }
+
+  /// Get audio by ID
+  AudioFileHiveModel? getAudioById(String id) {
+    return _audioBox.get(id);
+  }
+
+  /// Get all audios uploaded by a user
+  List<AudioFileHiveModel> getAudiosByUploader(String uploaderId) {
+    return _audioBox.values
+        .where((audio) => audio.uploaderId == uploaderId)
+        .toList();
+  }
+
+  /// Get all stored audios
+  Future<List<AudioFileHiveModel>> getStoredAudios() async {
+    return _audioBox.values.toList();
+  }
+
+  /// Delete audio by ID
+  Future<void> deleteAudio(String id) async {
+    await _audioBox.delete(id);
+  }
+
+  /// Clear all audio files (e.g. on logout)
+  Future<void> clearAudioFiles() async {
+    await _audioBox.clear();
   }
 
   /// Close all boxes on app disposal
