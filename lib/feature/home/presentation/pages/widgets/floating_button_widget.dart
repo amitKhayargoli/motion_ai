@@ -2,11 +2,11 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-class _RecordingFab extends StatelessWidget {
+class RecordingFab extends StatelessWidget {
   final bool isRecording;
   final VoidCallback onTap;
 
-  const _RecordingFab({required this.isRecording, required this.onTap});
+  const RecordingFab({required this.isRecording, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
