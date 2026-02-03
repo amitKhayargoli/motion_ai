@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:motion_ai/feature/auth/presentation/pages/login_page.dart';
 import 'package:motion_ai/feature/home/presentation/pages/widgets/gradient_scaffold_widget.dart';
 import 'onboarding_meeting_notes_screen.dart';
 
@@ -21,17 +22,20 @@ class OnboardingScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.only(right: 10),
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: IconButton(
-              icon: Icon(Icons.close, color: Colors.grey[800]),
-              onPressed: () {},
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+            },
+            child: const Text(
+              'Skip',
+              style: TextStyle(
+                fontFamily: 'sf_pro',
+                fontSize: 15,
+                color: Colors.white70,
+              ),
             ),
           ),
         ],
@@ -63,7 +67,7 @@ class OnboardingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               const Text(
-                "“Every thought is a frame in motion \n — capture it, refine it, and let your \n day flow with quiet precision.”",
+                "“Every thought is a frame in motion \n capture it, refine it, and let your \n day flow with quiet precision.”",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'play_fair_display',

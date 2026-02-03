@@ -23,9 +23,7 @@ class OnboardingMindspaceScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const Spacer(flex: 2),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -51,12 +49,100 @@ class OnboardingMindspaceScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-            const SizedBox(height: 60),
-            Image.asset('assets/images/meeting_notes.png'),
-
+            const SizedBox(height: 40),
+            Container(
+              width: 200,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFF2A2A2A)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // AI chat bubble
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome,
+                              color: Color(0xFFAEFB2A), size: 16),
+                          SizedBox(width: 6),
+                          Container(
+                            width: 60,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // User chat bubble
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFAEFB2A).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Container(
+                        width: 50,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFAEFB2A).withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // AI response bubble
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome,
+                              color: Color(0xFFAEFB2A), size: 16),
+                          SizedBox(width: 6),
+                          Container(
+                            width: 80,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: Colors.white24,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Spacer(flex: 3),
-
             const Text(
               'Ask the AI questions \n about your notes',
               textAlign: TextAlign.center,
@@ -67,9 +153,7 @@ class OnboardingMindspaceScreen extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-
             const SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: ElevatedButton(
@@ -99,7 +183,6 @@ class OnboardingMindspaceScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
           ],
         ),

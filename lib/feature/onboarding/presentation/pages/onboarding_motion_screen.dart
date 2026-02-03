@@ -23,9 +23,7 @@ class OnboardingMotionScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const Spacer(flex: 2),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -51,12 +49,89 @@ class OnboardingMotionScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-            const SizedBox(height: 60),
-            Image.asset('assets/images/meeting_notes.png'),
-
+            const SizedBox(height: 40),
+            Container(
+              width: 200,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFF2A2A2A)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Note item 1 - completed
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle,
+                          color: Color(0xFFAEFB2A), size: 20),
+                      SizedBox(width: 10),
+                      Container(
+                        width: 100,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Note item 2 - completed
+                  Row(
+                    children: [
+                      Icon(Icons.check_circle,
+                          color: Color(0xFFAEFB2A), size: 20),
+                      SizedBox(width: 10),
+                      Container(
+                        width: 70,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Note item 3 - in progress
+                  Row(
+                    children: [
+                      Icon(Icons.radio_button_unchecked,
+                          color: Colors.white38, size: 20),
+                      SizedBox(width: 10),
+                      Container(
+                        width: 85,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Sync indicator
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.sync, color: Color(0xFFAEFB2A), size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'In sync',
+                        style: TextStyle(
+                          fontFamily: 'sf_pro',
+                          color: Color(0xFFAEFB2A),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
             const Spacer(flex: 3),
-
             const Text(
               'Quiet Productivity \n No Noise. Just Notes.',
               textAlign: TextAlign.center,
@@ -67,9 +142,7 @@ class OnboardingMotionScreen extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-
             const SizedBox(height: 20),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: ElevatedButton(
@@ -97,7 +170,6 @@ class OnboardingMotionScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
           ],
         ),
