@@ -1,14 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:motion_ai/core/providers/providers.dart';
 import 'package:motion_ai/core/services/hive/hive_service.dart';
 import 'package:motion_ai/feature/audio_file/data/datasources/audio_file_datasource.dart';
 import 'package:motion_ai/feature/audio_file/data/models/audio_file_api_model.dart';
 import 'package:motion_ai/feature/audio_file/data/models/audio_file_hive_model.dart';
-
-// Provider
-final audioLocalDatasourceProvider = Provider<IAudioLocalDatasource>((ref) {
-  final hiveService = ref.read(hiveServiceProvider);
-  return AudioLocalDatasource(hiveService: hiveService);
-});
 
 class AudioLocalDatasource implements IAudioLocalDatasource {
   final HiveService _hiveService;

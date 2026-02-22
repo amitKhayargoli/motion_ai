@@ -48,7 +48,6 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
         throw StateError('Uploader ID not found. User not logged in.');
       }
 
-      // ✅ Validate duration
       if (durationSeconds <= 0) {
         throw Exception(
           'Duration must be greater than 0. Got: $durationSeconds',
@@ -82,34 +81,19 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
         contentType = MediaType('audio', 'aac');
       }
 
-      print('🔵 Content-Type: $contentType');
-
-      // ✅ Include both audio file AND duration
       final formData = FormData.fromMap({
         'audio': await MultipartFile.fromFile(
           file.path,
           filename: fileName,
           contentType: contentType,
         ),
-        'durationSeconds': durationSeconds, // ✅ Add duration back
+        'durationSeconds': durationSeconds,
       });
-
-      print(
-        '🔵 Form fields: ${formData.fields.map((e) => '${e.key}=${e.value}').join(', ')}',
-      );
-      print(
-        '🔵 Uploading to: ${ApiEndpoints.baseUrl}${ApiEndpoints.uploadAudio}',
-      );
-      print('🔵 Sending request...');
 
       final response = await _apiClient.post(
         ApiEndpoints.uploadAudio,
         data: formData,
       );
-
-      print('✅ Upload successful!');
-      print('🔵 Response status: ${response.statusCode}');
-      print('🔵 Response data: ${response.data}');
 
       final data = response.data['data'];
       final apiModel = AudioFileApiModel.fromJson(data);
@@ -125,10 +109,6 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
         uploader: apiModel.uploader,
       );
     } on DioException catch (e) {
-      print('❌ DIO EXCEPTION');
-      print('❌ Status Code: ${e.response?.statusCode}');
-      print('❌ Response Data: ${e.response?.data}');
-
       String errorMessage = 'Upload failed';
       if (e.response?.data != null) {
         final responseData = e.response!.data;
@@ -148,7 +128,6 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
 
       throw Exception(errorMessage);
     } catch (e, stackTrace) {
-      print('❌ Error: $e');
       print('❌ Stack trace: $stackTrace');
       rethrow;
     }
