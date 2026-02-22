@@ -118,6 +118,20 @@ class ApiClient {
       options: options,
     );
   }
+  // Multipart request for file uploads
+  Future<Response> updateFile(
+    String path, {
+    required FormData formData,
+    Options? options,
+    ProgressCallback? onSendProgress,
+  }) async {
+    return _dio.put(
+      path,
+      data: formData,
+      options: options,
+      onSendProgress: onSendProgress,
+    );
+  }
 
   Future<Response> uploadFile(
     String path, {
