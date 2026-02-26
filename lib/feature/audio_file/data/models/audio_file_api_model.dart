@@ -14,6 +14,7 @@ class UserModel {
 
 class AudioFileApiModel {
   final String? id;
+  final String? title;
   final String fileName;
   final String cloudUrl;
   final int durationSeconds;
@@ -24,18 +25,20 @@ class AudioFileApiModel {
 
   AudioFileApiModel({
     this.id,
+    this.title,
     required this.fileName,
     required this.cloudUrl,
     required this.durationSeconds,
     required this.mimeType,
     required this.uploaderId,
     required this.uploadedAt,
-    this.uploader, // Make optional
+    this.uploader,
   });
 
   factory AudioFileApiModel.fromJson(Map<String, dynamic> json) {
     return AudioFileApiModel(
-      id: json['id'],
+      id: json['id'] ?? json['_id'],
+      title: json['title'],
       fileName: json['fileName'],
       cloudUrl: json['cloudUrl'],
       durationSeconds: json['durationSeconds'],
@@ -44,12 +47,13 @@ class AudioFileApiModel {
       uploadedAt: DateTime.parse(json['uploadedAt']),
       uploader: json['uploader'] != null
           ? UserModel.fromJson(json['uploader'])
-          : null, // Handle null
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'title': title,
       'fileName': fileName,
       'cloudUrl': cloudUrl,
       'durationSeconds': durationSeconds,
@@ -57,31 +61,33 @@ class AudioFileApiModel {
     };
   }
 
-  /// Mapper → Domain
   AudioFileEntity toEntity() {
     return AudioFileEntity(
       id: id!,
+      title: title,
       fileName: fileName,
-      localPath: '', // API model doesn't have local path
+      localPath: '',
       cloudUrl: cloudUrl,
       durationSeconds: durationSeconds,
       mimeType: mimeType,
       uploaderId: uploaderId,
       uploadedAt: uploadedAt,
-      username: uploader?.username ?? '', // Handle null uploader
+      username: uploader?.username ?? '',
     );
   }
 
   AudioFileHiveModel toHiveModel() {
     return AudioFileHiveModel(
       id: id!,
+      title: title,
       fileName: fileName,
-      localPath: '', // API model doesn't have local path
+      localPath: '',
       cloudUrl: cloudUrl,
       durationSeconds: durationSeconds,
       mimeType: mimeType,
       uploaderId: uploaderId,
       uploadedAt: uploadedAt,
+      syncStatus: 0, // data from API is always synced
     );
   }
 }
