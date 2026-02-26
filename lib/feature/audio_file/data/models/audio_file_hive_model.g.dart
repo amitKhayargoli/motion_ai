@@ -25,13 +25,15 @@ class AudioFileHiveModelAdapter extends TypeAdapter<AudioFileHiveModel> {
       mimeType: fields[5] as String,
       uploadedAt: fields[6] as DateTime,
       uploaderId: fields[7] as String,
+      title: fields[8] as String?,
+      syncStatus: (fields[9] as int?) ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, AudioFileHiveModel obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +49,11 @@ class AudioFileHiveModelAdapter extends TypeAdapter<AudioFileHiveModel> {
       ..writeByte(6)
       ..write(obj.uploadedAt)
       ..writeByte(7)
-      ..write(obj.uploaderId);
+      ..write(obj.uploaderId)
+      ..writeByte(8)
+      ..write(obj.title)
+      ..writeByte(9)
+      ..write(obj.syncStatus);
   }
 
   @override

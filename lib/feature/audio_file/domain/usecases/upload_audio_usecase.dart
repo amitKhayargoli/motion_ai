@@ -14,14 +14,18 @@ import 'package:motion_ai/feature/audio_file/domain/repositories/audio_file_repo
 class UploadAudioParams extends Equatable {
   final String filePath;
   final int durationSeconds;
+  final String? title;
+  final String? fileName;
 
   const UploadAudioParams({
     required this.filePath,
     required this.durationSeconds,
+    this.title,
+    this.fileName,
   });
 
   @override
-  List<Object?> get props => [filePath, durationSeconds];
+  List<Object?> get props => [filePath, durationSeconds, title, fileName];
 }
 
 // Create Provider
@@ -43,14 +47,16 @@ class UploadAudioUsecase
   UploadAudioUsecase({
     required IAudioFileRepository audioRepository,
     required UserSessionService userSessionService,
-  }) : _audioRepository = audioRepository,
-       _userSessionService = userSessionService;
+  })  : _audioRepository = audioRepository,
+        _userSessionService = userSessionService;
 
   @override
   Future<Either<Failure, AudioFileEntity>> call(UploadAudioParams params) {
     final audioEntity = AudioFileEntity(
       localPath: params.filePath,
       durationSeconds: params.durationSeconds,
+      title: params.title,
+      fileName: params.fileName,
       uploaderId: _userSessionService.getUserId()!,
       username: _userSessionService.getUsername()!,
     );

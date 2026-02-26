@@ -29,14 +29,15 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
     required ApiClient apiClient,
     required TokenService tokenService,
     required UserSessionService userSessionService,
-  }) : _apiClient = apiClient,
-       _tokenService = tokenService,
-       _userSessionService = userSessionService;
+  })  : _apiClient = apiClient,
+        _tokenService = tokenService,
+        _userSessionService = userSessionService;
 
   @override
   Future<AudioFileApiModel> uploadAudio({
     required String filePath,
     required int durationSeconds,
+    String? title,
   }) async {
     try {
       print('🔵 Starting audio upload...');
@@ -46,13 +47,6 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
 
       if (uploaderId == null || uploaderId.isEmpty) {
         throw StateError('Uploader ID not found. User not logged in.');
-      }
-
-      // ✅ Validate duration
-      if (durationSeconds <= 0) {
-        throw Exception(
-          'Duration must be greater than 0. Got: $durationSeconds',
-        );
       }
 
       final file = File(filePath);
@@ -67,6 +61,7 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
       final fileName = file.path.split('/').last;
       print('🔵 File name: $fileName');
       print('🔵 Duration: $durationSeconds seconds');
+      print('🔵 Title: $title');
 
       // Set MIME type based on file extension
       MediaType contentType;
@@ -82,40 +77,50 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
         contentType = MediaType('audio', 'aac');
       }
 
-      print('🔵 Content-Type: $contentType');
-
-      // ✅ Include both audio file AND duration
-      final formData = FormData.fromMap({
+      final formMap = <String, dynamic>{
         'audio': await MultipartFile.fromFile(
           file.path,
           filename: fileName,
           contentType: contentType,
         ),
-        'durationSeconds': durationSeconds, // ✅ Add duration back
-      });
+        'durationSeconds': durationSeconds.toString(),
+      };
+      if (title != null && title.isNotEmpty) {
+        formMap['title'] = title;
+      }
 
-      print(
-        '🔵 Form fields: ${formData.fields.map((e) => '${e.key}=${e.value}').join(', ')}',
-      );
-      print(
-        '🔵 Uploading to: ${ApiEndpoints.baseUrl}${ApiEndpoints.uploadAudio}',
-      );
-      print('🔵 Sending request...');
+      final formData = FormData.fromMap(formMap);
+
+      print('🔵 FormData fields → title: $title, durationSeconds: $durationSeconds');
 
       final response = await _apiClient.post(
         ApiEndpoints.uploadAudio,
         data: formData,
       );
 
-      print('✅ Upload successful!');
-      print('🔵 Response status: ${response.statusCode}');
-      print('🔵 Response data: ${response.data}');
-
       final data = response.data['data'];
       final apiModel = AudioFileApiModel.fromJson(data);
+      final serverId = apiModel.id;
+
+      // Server may not parse multipart text fields — PATCH title after upload
+      if (serverId != null &&
+          serverId.isNotEmpty &&
+          title != null &&
+          title.isNotEmpty) {
+        try {
+          await _apiClient.patch(
+            ApiEndpoints.updateAudio(serverId),
+            data: {'title': title},
+          );
+          print('🔵 Patched title "$title" on audio $serverId');
+        } catch (e) {
+          print('⚠️ Failed to PATCH title after upload: $e');
+        }
+      }
 
       return AudioFileApiModel(
-        id: apiModel.id ?? '',
+        id: serverId,
+        title: title ?? apiModel.title,
         fileName: apiModel.fileName,
         cloudUrl: apiModel.cloudUrl,
         durationSeconds: durationSeconds,
@@ -125,16 +130,11 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
         uploader: apiModel.uploader,
       );
     } on DioException catch (e) {
-      print('❌ DIO EXCEPTION');
-      print('❌ Status Code: ${e.response?.statusCode}');
-      print('❌ Response Data: ${e.response?.data}');
-
       String errorMessage = 'Upload failed';
       if (e.response?.data != null) {
         final responseData = e.response!.data;
         if (responseData is Map) {
-          errorMessage =
-              responseData['message'] ??
+          errorMessage = responseData['message'] ??
               responseData['error'] ??
               'Server error: ${e.response?.statusCode}';
         } else if (responseData is String) {
@@ -148,7 +148,6 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
 
       throw Exception(errorMessage);
     } catch (e, stackTrace) {
-      print('❌ Error: $e');
       print('❌ Stack trace: $stackTrace');
       rethrow;
     }
@@ -176,5 +175,18 @@ class AudioFileRemoteDatasource implements IAudioRemoteDatasource {
       print('❌ Error fetching audio files for uploader $uploaderId: $e');
       rethrow;
     }
+  }
+
+  @override
+  Future<void> updateAudio(String audioId, {String? title}) async {
+    await _apiClient.patch(
+      ApiEndpoints.updateAudio(audioId),
+      data: {'title': title},
+    );
+  }
+
+  @override
+  Future<void> deleteAudio(String audioId) async {
+    await _apiClient.delete(ApiEndpoints.deleteAudio(audioId));
   }
 }

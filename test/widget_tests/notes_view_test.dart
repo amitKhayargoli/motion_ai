@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:motion_ai/feature/home/presentation/pages/notes_view.dart';
+import 'package:motion_ai/feature/notes/presentation/pages/notes_view.dart';
 
 void main() {
   testWidgets('Notes screen loads correctly', (tester) async {

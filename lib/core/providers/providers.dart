@@ -1,10 +1,13 @@
 // lib/core/providers/providers.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 import 'package:motion_ai/core/api/api_client.dart';
+import 'package:motion_ai/core/constants/hive_table_constant.dart';
 import 'package:motion_ai/core/services/storage/token_service.dart';
 import 'package:motion_ai/feature/audio_file/data/datasources/local/audio_local_datasource.dart';
 import 'package:motion_ai/feature/audio_file/data/datasources/remote/audio_remote_datasource.dart';
 import 'package:motion_ai/feature/auth/data/datasources/auth_datasource.dart';
+import 'package:motion_ai/feature/workspace/data/models/workspace_hive_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:motion_ai/core/services/storage/user_session_service.dart';
 import 'package:motion_ai/core/services/hive/hive_service.dart';
@@ -41,4 +44,8 @@ final audioRemoteProvider = Provider<IAudioRemoteDatasource>((ref) {
 // Audio Local Datasource Provider
 final audioLocalDatasourceProvider = Provider<IAudioLocalDatasource>((ref) {
   return AudioLocalDatasource(hiveService: ref.read(hiveServiceProvider));
+});
+
+final workspaceBoxProvider = Provider<Box<WorkspaceHiveModel>>((ref) {
+  return Hive.box<WorkspaceHiveModel>(HiveTableConstant.workspaceTable);
 });
