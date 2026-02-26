@@ -17,4 +17,7 @@ class HiveTableConstant {
 
   static const int meetingLink = 4;
   static const String meetingLinkTable = 'meeting_link_table';
+
+  static const int audioFileTypeId = 5;
+  static const String audioFileTable = "audio_files";
 }

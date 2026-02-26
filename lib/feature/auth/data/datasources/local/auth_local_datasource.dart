@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:motion_ai/core/services/hive/hive_service.dart';
+import 'package:motion_ai/core/providers/providers.dart';
+import 'package:motion_ai/core/services/hive/hive_service.dart'
+    hide hiveServiceProvider;
 import 'package:motion_ai/core/services/storage/user_session_service.dart';
 import 'package:motion_ai/feature/auth/data/datasources/auth_datasource.dart';
 import 'package:motion_ai/feature/auth/data/models/auth_hive_model.dart';
@@ -39,6 +41,7 @@ class AuthLocalDatasource implements IAuthLocalDataSource {
         await userSessionService.saveUserSession(
           userId: user.userId!,
           userEmail: user.email,
+          username: user.username!,
         );
       }
 

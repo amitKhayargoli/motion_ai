@@ -19,7 +19,7 @@ class AuthHiveModelAdapter extends TypeAdapter<AuthHiveModel> {
     return AuthHiveModel(
       userId: fields[0] as String?,
       email: fields[1] as String,
-      password: fields[2] as String,
+      password: fields[2] as String?,
       createdAt: fields[3] as DateTime?,
     );
   }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:motion_ai/core/services/storage/user_session_service.dart';
+import 'package:motion_ai/core/providers/providers.dart';
 import 'package:motion_ai/feature/home/presentation/pages/dashboard_view.dart';
-import 'package:motion_ai/feature/home/presentation/pages/home_view.dart';
 import 'package:motion_ai/routes/app_routes.dart';
 import '../../../onboarding/presentation/pages/onboarding_screen.dart';
 
