@@ -9,7 +9,7 @@ class AudioLocalDatasource implements IAudioLocalDatasource {
   final HiveService _hiveService;
 
   AudioLocalDatasource({required HiveService hiveService})
-    : _hiveService = hiveService;
+      : _hiveService = hiveService;
 
   @override
   Future<void> saveAudio(AudioFileHiveModel audio) async {
@@ -22,6 +22,11 @@ class AudioLocalDatasource implements IAudioLocalDatasource {
   }
 
   @override
+  Future<AudioFileHiveModel?> getAudioById(String audioId) async {
+    return _hiveService.getAudioById(audioId);
+  }
+
+  @override
   Future<void> deleteAudio(String audioId) async {
     await _hiveService.deleteAudio(audioId);
   }
@@ -29,15 +34,22 @@ class AudioLocalDatasource implements IAudioLocalDatasource {
   @override
   Future<void> cacheAudios(List<AudioFileApiModel> audios) async {
     for (final apiModel in audios) {
-      // Assuming AudioFileApiModel has toHiveModel()
       await saveAudio(apiModel.toHiveModel());
     }
   }
 
   @override
   Future<List<AudioFileHiveModel>> getStoredAudios() async {
-    // Assuming this returns all stored audios; adjust if needed
-    return _hiveService
-        .getStoredAudios(); // Or implement separately if getAudios is sync
+    return _hiveService.getStoredAudios();
+  }
+
+  @override
+  Future<List<AudioFileHiveModel>> getPendingAudios() async {
+    return _hiveService.getPendingAudios();
+  }
+
+  @override
+  Future<void> clearAll() async {
+    await _hiveService.clearAudioFiles();
   }
 }
