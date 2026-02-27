@@ -5,6 +5,7 @@ abstract class IWorkspaceRemoteDataSource {
   Future<WorkspaceApiModel> createWorkspace(String name);
   Future<List<WorkspaceApiModel>> getMyWorkspaces();
   Future<WorkspaceApiModel?> getWorkspaceById(String id);
+  Future<WorkspaceApiModel> updateWorkspace(String id, String name);
   Future<void> deleteWorkspace(String id);
   Future<WorkspaceApiModel> joinByInviteLink(String inviteLink);
 }
