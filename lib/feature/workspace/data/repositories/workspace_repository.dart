@@ -32,9 +32,9 @@ class WorkspaceRepository implements IWorkspaceRepository {
     required IWorkspaceLocalDataSource local,
     required IWorkspaceRemoteDataSource remote,
     required NetworkInfo networkInfo,
-  }) : _local = local,
-       _remote = remote,
-       _networkInfo = networkInfo;
+  })  : _local = local,
+        _remote = remote,
+        _networkInfo = networkInfo;
 
   String _dioMessage(DioException e, String fallback) {
     final data = e.response?.data;
@@ -82,39 +82,49 @@ class WorkspaceRepository implements IWorkspaceRepository {
 
   @override
   Future<Either<Failure, List<WorkspaceEntity>>> getMyWorkspaces() async {
-    if (await _networkInfo.isConnected) {
-      try {
-        final remoteList = await _remote.getMyWorkspaces();
-        final entities = remoteList.map((m) => m.toEntity()).toList();
+    // Return cached workspaces immediately if available
+    try {
+      final cached = await _local.getAllWorkspaces();
+      if (cached.isNotEmpty) {
+        _refreshWorkspacesFromRemote(); // fire-and-forget background update
+        return Right(cached.map((m) => m.toEntity()).toList());
+      }
+    } catch (_) {}
 
-        await _local.replaceAll(
-          entities.map((e) => WorkspaceHiveModel.fromEntity(e)).toList(),
-        );
-        return Right(entities);
-      } on DioException catch (e) {
-        // fallback to cache
-        try {
-          final cached = await _local.getAllWorkspaces();
-          return Right(cached.map((m) => m.toEntity()).toList());
-        } catch (_) {
-          return Left(
-            ApiFailure(
-              message: _dioMessage(e, 'Failed to fetch workspaces'),
-              statusCode: e.response?.statusCode,
-            ),
-          );
-        }
-      } catch (e) {
-        return Left(ApiFailure(message: e.toString()));
-      }
-    } else {
-      try {
-        final list = await _local.getAllWorkspaces();
-        return Right(list.map((m) => m.toEntity()).toList());
-      } catch (e) {
-        return Left(LocalDatabaseFailure(message: e.toString()));
-      }
+    // No local data — must block on remote (first launch / cleared cache)
+    if (!await _networkInfo.isConnected) {
+      return const Left(NetworkFailure(message: "No internet connection"));
     }
+    try {
+      final remoteList = await _remote.getMyWorkspaces();
+      final entities = remoteList.map((m) => m.toEntity()).toList();
+      await _local.replaceAll(
+        entities.map((e) => WorkspaceHiveModel.fromEntity(e)).toList(),
+      );
+      return Right(entities);
+    } on DioException catch (e) {
+      return Left(
+        ApiFailure(
+          message: _dioMessage(e, 'Failed to fetch workspaces'),
+          statusCode: e.response?.statusCode,
+        ),
+      );
+    } catch (e) {
+      return Left(ApiFailure(message: e.toString()));
+    }
+  }
+
+  /// Fire-and-forget: silently refreshes the Hive workspace cache from remote.
+  void _refreshWorkspacesFromRemote() async {
+    if (!await _networkInfo.isConnected) return;
+    try {
+      final remoteList = await _remote.getMyWorkspaces();
+      await _local.replaceAll(
+        remoteList
+            .map((m) => WorkspaceHiveModel.fromEntity(m.toEntity()))
+            .toList(),
+      );
+    } catch (_) {}
   }
 
   @override
@@ -142,6 +152,33 @@ class WorkspaceRepository implements IWorkspaceRepository {
       return Left(
         ApiFailure(
           message: _dioMessage(e, 'Failed to fetch workspace'),
+          statusCode: e.response?.statusCode,
+        ),
+      );
+    } catch (e) {
+      return Left(ApiFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, WorkspaceEntity>> updateWorkspace(
+    String workspaceId,
+    String name,
+  ) async {
+    if (!await _networkInfo.isConnected) {
+      return const Left(NetworkFailure(message: "No internet connection"));
+    }
+
+    try {
+      final updated = await _remote.updateWorkspace(workspaceId, name);
+      final entity = updated.toEntity();
+
+      await _local.upsertWorkspace(WorkspaceHiveModel.fromEntity(entity));
+      return Right(entity);
+    } on DioException catch (e) {
+      return Left(
+        ApiFailure(
+          message: _dioMessage(e, 'Failed to update workspace'),
           statusCode: e.response?.statusCode,
         ),
       );
