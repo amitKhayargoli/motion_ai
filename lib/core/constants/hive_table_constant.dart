@@ -20,4 +20,9 @@ class HiveTableConstant {
 
   static const int audioFileTypeId = 5;
   static const String audioFileTable = "audio_files";
+
+  static const int chatThreadTypeId = 6;
+  static const int chatMessageTypeId = 7;
+  static const String chatThreadTable = "chat_threads";
+  static const String chatMessageTable = "chat_messages";
 }
