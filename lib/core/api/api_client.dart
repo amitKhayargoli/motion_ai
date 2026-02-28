@@ -18,7 +18,7 @@ class ApiClient {
   late final Dio _dio;
 
   ApiClient({required TokenService tokenService})
-    : _tokenService = tokenService {
+      : _tokenService = tokenService {
     _dio = Dio(
       BaseOptions(
         baseUrl: ApiEndpoints.baseUrl,
@@ -34,7 +34,8 @@ class ApiClient {
     // Add interceptors
     _dio.interceptors.add(_AuthInterceptor(tokenService: _tokenService));
 
-    // Auto retry on network failures
+    // Auto retry on network failures (skip auth endpoints – user expects
+    // immediate feedback for login / register, not silent retries).
     _dio.interceptors.add(
       RetryInterceptor(
         dio: _dio,
@@ -45,6 +46,11 @@ class ApiClient {
           Duration(seconds: 3),
         ],
         retryEvaluator: (error, attempt) {
+          final path = error.requestOptions.path;
+          if (path.startsWith(ApiEndpoints.login) ||
+              path.startsWith(ApiEndpoints.register)) {
+            return false;
+          }
           return error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
@@ -118,6 +124,21 @@ class ApiClient {
       options: options,
     );
   }
+
+  Future<Response> patch(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+  }) async {
+    return _dio.patch(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+    );
+  }
+
   // Multipart request for file uploads
   Future<Response> updateFile(
     String path, {
@@ -152,7 +173,7 @@ class ApiClient {
 class _AuthInterceptor extends Interceptor {
   final TokenService _tokenService;
   _AuthInterceptor({required TokenService tokenService})
-    : _tokenService = tokenService;
+      : _tokenService = tokenService;
 
   @override
   void onRequest(
@@ -161,8 +182,7 @@ class _AuthInterceptor extends Interceptor {
   ) async {
     final publicEndpoints = [ApiEndpoints.login, ApiEndpoints.register];
 
-    final isPublicGet =
-        options.method == 'GET' &&
+    final isPublicGet = options.method == 'GET' &&
         publicEndpoints.any((endpoint) => options.path.startsWith(endpoint));
     final isAuthEndpoint = publicEndpoints.any(
       (endpoint) => options.path.startsWith(endpoint),
