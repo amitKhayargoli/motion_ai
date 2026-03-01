@@ -4,8 +4,9 @@ import '../entities/note_entity.dart';
 
 abstract class INoteRepository {
   Future<Either<Failure, List<NoteEntity>>> getWorkspaceNotes(
-    String workspaceId,
-  );
+    String workspaceId, {
+    bool forceRefresh = false,
+  });
 
   Future<Either<Failure, NoteEntity>> createNote(
     String workspaceId,
@@ -20,4 +21,13 @@ abstract class INoteRepository {
   );
 
   Future<Either<Failure, bool>> deleteNote(String noteId);
+
+  Future<Either<Failure, NoteEntity?>> getTranscriptByAudioFileId(
+      String audioFileId);
+
+  Future<Either<Failure, NoteEntity>> transcribeAudio({
+    required String audioFileId,
+    required String workspaceId,
+    String? noteTitle,
+  });
 }

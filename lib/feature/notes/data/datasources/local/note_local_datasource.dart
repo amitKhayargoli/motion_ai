@@ -36,4 +36,8 @@ class NoteLocalDatasource implements INoteLocalDataSource {
   @override
   Future<List<NoteHiveModel>> getPendingWorkspaceNotes(String workspaceId) =>
       hive.getPendingNotesForWorkspace(workspaceId);
+
+  @override
+  Future<NoteHiveModel?> getTranscriptByAudioFileId(String audioFileId) =>
+      hive.getTranscriptByAudioFileId(audioFileId);
 }

@@ -4,10 +4,11 @@ import 'package:motion_ai/feature/notes/domain/entities/note_entity.dart';
 
 part 'note_hive_model.g.dart';
 
+/// syncStatus:
 /// 0 = synced
 /// 1 = pendingCreate
 /// 2 = pendingUpdate
-/// 3 = pendingDelete (optional if you want soft-delete; we hard-delete locally)
+/// 3 = pendingDelete (optional)
 @HiveType(typeId: HiveTableConstant.notesTypeId)
 class NoteHiveModel extends HiveObject {
   @HiveField(0)
@@ -31,14 +32,22 @@ class NoteHiveModel extends HiveObject {
   @HiveField(6)
   final DateTime? updatedAt;
 
-  // ✅ NEW: sync helpers
   @HiveField(7)
-  final int syncStatus; // 0/1/2
+  final int syncStatus; // 0/1/2/3
 
-  /// ✅ NEW: if this is a temp local note, serverId is null until synced.
+  /// If this is a temp local note, serverId is null until synced.
   /// If synced, serverId == real server note id.
   @HiveField(8)
   final String? serverId;
+
+  @HiveField(9)
+  final String? audioFileId;
+
+  @HiveField(10)
+  final String? type; // MANUAL | VOICE_TRANSCRIPT | MEETING_SUMMARY
+
+  @HiveField(11)
+  final String? status; // DRAFT | PROCESSING | PUBLISHED
 
   NoteHiveModel({
     required this.id,
@@ -50,6 +59,9 @@ class NoteHiveModel extends HiveObject {
     this.updatedAt,
     this.syncStatus = 0,
     this.serverId,
+    this.audioFileId,
+    this.type,
+    this.status,
   });
 
   NoteEntity toEntity() => NoteEntity(
@@ -60,6 +72,9 @@ class NoteHiveModel extends HiveObject {
         summary: summary,
         createdAt: createdAt,
         updatedAt: updatedAt,
+        audioFileId: audioFileId,
+        type: type,
+        status: status,
       );
 
   factory NoteHiveModel.fromEntity(
@@ -78,6 +93,10 @@ class NoteHiveModel extends HiveObject {
       updatedAt: e.updatedAt,
       syncStatus: syncStatus,
       serverId: serverId,
+
+      audioFileId: e.audioFileId,
+      type: e.type,
+      status: e.status,
     );
   }
 
@@ -91,6 +110,9 @@ class NoteHiveModel extends HiveObject {
     DateTime? updatedAt,
     int? syncStatus,
     String? serverId,
+    String? audioFileId,
+    String? type,
+    String? status,
   }) {
     return NoteHiveModel(
       id: id ?? this.id,
@@ -102,6 +124,9 @@ class NoteHiveModel extends HiveObject {
       updatedAt: updatedAt ?? this.updatedAt,
       syncStatus: syncStatus ?? this.syncStatus,
       serverId: serverId ?? this.serverId,
+      audioFileId: audioFileId ?? this.audioFileId,
+      type: type ?? this.type,
+      status: status ?? this.status,
     );
   }
 }

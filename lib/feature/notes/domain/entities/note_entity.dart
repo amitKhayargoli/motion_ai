@@ -1,4 +1,9 @@
-enum NoteSyncStatus { synced, pendingCreate, pendingUpdate, pendingDelete }
+enum NoteSyncStatus {
+  synced,
+  pendingCreate,
+  pendingUpdate,
+  pendingDelete,
+}
 
 class NoteEntity {
   final String id;
@@ -6,6 +11,11 @@ class NoteEntity {
   final String title;
   final String content;
   final String? summary;
+
+  final String? audioFileId;
+  final String? type; // MANUAL | VOICE_TRANSCRIPT | MEETING_SUMMARY
+  final String? status; // DRAFT | PROCESSING | PUBLISHED
+
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -17,6 +27,9 @@ class NoteEntity {
     required this.title,
     required this.content,
     this.summary,
+    this.audioFileId,
+    this.type,
+    this.status,
     this.createdAt,
     this.updatedAt,
     this.syncStatus = NoteSyncStatus.synced,
@@ -26,6 +39,9 @@ class NoteEntity {
     String? title,
     String? content,
     String? summary,
+    String? audioFileId,
+    String? type,
+    String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
     NoteSyncStatus? syncStatus,
@@ -36,6 +52,9 @@ class NoteEntity {
       title: title ?? this.title,
       content: content ?? this.content,
       summary: summary ?? this.summary,
+      audioFileId: audioFileId ?? this.audioFileId,
+      type: type ?? this.type,
+      status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       syncStatus: syncStatus ?? this.syncStatus,
