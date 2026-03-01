@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +11,10 @@ import 'package:motion_ai/feature/notes/presentation/view_model/notes_view_model
 import 'package:motion_ai/feature/notes/presentation/state/notes_state.dart';
 import 'package:motion_ai/feature/workspace/presentation/view_model/workspace_view_model.dart';
 
-// ✅ import your editor page
+import 'package:motion_ai/core/services/sensor/shake_detection_service.dart';
+import 'package:motion_ai/core/sync/notes_auto_sync.dart';
+import 'package:motion_ai/feature/audio_file/presentation/providers/recording_providers.dart';
+import 'package:motion_ai/feature/notes/presentation/providers/shake_to_refresh_provider.dart';
 import 'package:motion_ai/feature/notes/presentation/pages/note_editor.dart';
 
 class NotesListView extends ConsumerStatefulWidget {
@@ -21,12 +26,28 @@ class NotesListView extends ConsumerStatefulWidget {
 
 class _NotesListViewState extends ConsumerState<NotesListView> {
   bool _isSearching = false;
+  bool _showSynced = false;
+  String? _activeFilter; // null = All
+  Timer? _syncedTimer;
   final TextEditingController _searchCtrl = TextEditingController();
   ProviderSubscription? _wsSub;
+  ProviderSubscription<NotesSyncState>? _syncSub;
+  late final ShakeDetectionService _shakeService;
+
+  // ---------- Selection state ----------
+  final Set<String> _selectedNoteIds = {};
+  bool get _isSelectionMode => _selectedNoteIds.isNotEmpty;
 
   // ---------- HTML helpers ----------
   String _htmlToPlainText(String html) {
-    final document = html_parser.parse(html);
+    // Insert a space before closing block tags so paragraphs don't merge
+    final spaced = html.replaceAllMapped(
+      RegExp(r'</(p|div|br|h[1-6]|li|blockquote)>', caseSensitive: false),
+      (m) => ' </${m[1]}>',
+    );
+    // Also handle self-closing <br> / <br/>
+    final withBreaks = spaced.replaceAll(RegExp(r'<br\s*/?>'), ' ');
+    final document = html_parser.parse(withBreaks);
     return (document.body?.text ?? '').trim();
   }
 
@@ -36,9 +57,70 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
     return '${text.substring(0, maxChars)}...';
   }
 
+  String _noteTypeLabel(String? type) {
+    switch (type) {
+      case 'MEETING_SUMMARY':
+        return 'Meeting Summary';
+      case 'VOICE_TRANSCRIPT':
+        return 'Voice Transcript';
+      case 'MANUAL':
+        return 'Manual Note';
+      default:
+        return 'Note';
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
+    _shakeService = ref.read(shakeDetectionServiceProvider);
+
+    void onShake() {
+      if (!mounted) return;
+      if (ref.read(recordingStateProvider) == RecordingState.recording) return;
+      final ws = ref.read(workspaceViewModelProvider).selected;
+      if (ws != null) {
+        ref.read(notesViewModelProvider.notifier).refreshWorkspaceNotes(ws.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Refreshing notes...'),
+            backgroundColor: Color(0xFF3F5F00),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    }
+
+    if (ref.read(shakeToRefreshEnabledProvider)) {
+      _shakeService.startListening(onShakeDetected: onShake);
+    }
+
+    ref.listenManual(shakeToRefreshEnabledProvider, (_, enabled) {
+      if (enabled) {
+        _shakeService.startListening(onShakeDetected: onShake);
+      } else {
+        _shakeService.stopListening();
+      }
+    });
+
+    _syncSub = ref.listenManual(notesAutoSyncProvider, (prev, next) {
+      final wasSyncing = prev?.isSyncing ?? false;
+
+      if (wasSyncing && !next.isSyncing && next.lastError == null) {
+        final ws = ref.read(workspaceViewModelProvider).selected;
+        if (ws != null) {
+          ref.read(notesViewModelProvider.notifier).fetchWorkspaceNotes(ws.id);
+        }
+
+        // Show "Synced" pill briefly
+        _syncedTimer?.cancel();
+        setState(() => _showSynced = true);
+        _syncedTimer = Timer(const Duration(seconds: 3), () {
+          if (mounted) setState(() => _showSynced = false);
+        });
+      }
+    });
 
     // 1) Fetch once after first frame (selected workspace)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -49,6 +131,7 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
             .read(notesViewModelProvider.notifier)
             .fetchWorkspaceNotes(selected.id);
       }
+      ref.read(notesAutoSyncProvider.notifier).trySync();
     });
 
     // 2) Listen workspace changes
@@ -64,12 +147,16 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
         }
         ref.read(notesViewModelProvider.notifier).fetchWorkspaceNotes(nextId);
       }
+      ref.read(notesAutoSyncProvider.notifier).trySync();
     });
   }
 
   @override
   void dispose() {
+    _shakeService.stopListening();
     _wsSub?.close();
+    _syncSub?.close();
+    _syncedTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -81,6 +168,53 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
       _isSearching = false;
       _searchCtrl.clear();
     });
+  }
+
+  void _clearSelection() => setState(() => _selectedNoteIds.clear());
+
+  void _toggleSelection(String noteId) {
+    setState(() {
+      if (_selectedNoteIds.contains(noteId)) {
+        _selectedNoteIds.remove(noteId);
+      } else {
+        _selectedNoteIds.add(noteId);
+      }
+    });
+  }
+
+  Future<void> _confirmAndDeleteNotes(List<String> noteIds) async {
+    final count = noteIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E3A0F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title:
+            const Text('Delete Notes', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Are you sure you want to delete $count ${count == 1 ? 'note' : 'notes'}?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    for (final id in noteIds) {
+      await ref.read(notesViewModelProvider.notifier).deleteNote(id);
+    }
+    _clearSelection();
   }
 
   Future<void> _openCreateNote() async {
@@ -113,15 +247,21 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
 
   @override
   Widget build(BuildContext context) {
+    final syncState = ref.watch(notesAutoSyncProvider);
     final wsState = ref.watch(workspaceViewModelProvider);
     final selectedWorkspace = wsState.selected;
 
     final notesState = ref.watch(notesViewModelProvider);
     final query = _searchCtrl.text.trim().toLowerCase();
 
-    final visibleNotes = query.isEmpty
+    // Apply type filter first, then search query
+    final filteredByType = _activeFilter == null
         ? notesState.notes
-        : notesState.notes.where((n) {
+        : notesState.notes.where((n) => n.type == _activeFilter).toList();
+
+    final visibleNotes = query.isEmpty
+        ? filteredByType
+        : filteredByType.where((n) {
             final t = n.title.toLowerCase();
             final s = (n.summary ?? '').toLowerCase();
             final plainBody = _htmlToPlainText(n.content).toLowerCase();
@@ -157,39 +297,170 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 40),
-                    Expanded(
-                      child: _isSearching
-                          ? _SearchField(
-                              controller: _searchCtrl,
-                              onChanged: (_) => setState(() {}),
-                              onClose: _closeSearch,
-                            )
-                          : const Center(
-                              child: Text(
-                                'NOTES',
-                                style: TextStyle(
-                                  color: Colors.white60,
-                                  letterSpacing: 2,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'sf_pro',
+                child: _isSelectionMode
+                    // ---- Selection mode bar ----
+                    ? Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.close,
+                                color: Colors.white, size: 24),
+                            onPressed: _clearSelection,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_selectedNoteIds.length} selected',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'sf_pro',
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                color: Colors.red, size: 24),
+                            onPressed: () => _confirmAndDeleteNotes(
+                                _selectedNoteIds.toList()),
+                          ),
+                        ],
+                      )
+                    // ---- Normal bar ----
+                    : Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Row(
+                            children: [
+                              const SizedBox(width: 40),
+                              Expanded(
+                                child: _isSearching
+                                    ? _SearchField(
+                                        controller: _searchCtrl,
+                                        onChanged: (_) => setState(() {}),
+                                        onClose: _closeSearch,
+                                      )
+                                    : const Center(
+                                        child: Text(
+                                          'NOTES',
+                                          style: TextStyle(
+                                            color: Colors.white60,
+                                            letterSpacing: 2,
+                                            fontWeight: FontWeight.w600,
+                                            fontFamily: 'sf_pro',
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                              if (!_isSearching)
+                                IconButton(
+                                  icon: const Icon(Icons.search,
+                                      color: Colors.white, size: 24),
+                                  onPressed: _openSearch,
+                                )
+                              else
+                                const SizedBox(width: 48),
+                            ],
+                          ),
+                          // Syncing pill
+                          if (syncState.isSyncing)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.12)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    SizedBox(
+                                      height: 14,
+                                      width: 14,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      "Syncing…",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                        fontFamily: 'sf_pro',
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                    ),
-                    if (!_isSearching)
-                      IconButton(
-                        icon: const Icon(Icons.search,
-                            color: Colors.white, size: 24),
-                        onPressed: _openSearch,
-                      )
-                    else
-                      const SizedBox(width: 48),
-                  ],
-                ),
+                          // Synced pill
+                          if (!syncState.isSyncing && _showSynced)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                      color: Colors.green.withOpacity(0.25)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(Icons.check_circle,
+                                        color: Colors.green, size: 14),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Synced",
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 12,
+                                        fontFamily: 'sf_pro',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
               ),
+
+              // ======= FILTER CHIPS =======
+              if (!_isSelectionMode)
+                Padding(
+                  padding: const EdgeInsets.only(left: 20, top: 4, bottom: 4),
+                  child: SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _buildFilterChip(label: 'All', type: null),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                            label: 'Manual',
+                            type: 'MANUAL',
+                            icon: Icons.edit_note),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                            label: 'Transcript',
+                            type: 'VOICE_TRANSCRIPT',
+                            icon: Icons.mic),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                            label: 'Meeting',
+                            type: 'MEETING_SUMMARY',
+                            icon: Icons.groups),
+                        const SizedBox(width: 20),
+                      ],
+                    ),
+                  ),
+                ),
 
               // ======= BODY =======
               Expanded(
@@ -233,31 +504,72 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
                       );
                     }
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.only(top: 10, bottom: 120),
-                      itemCount: visibleNotes.length,
-                      itemBuilder: (context, index) {
-                        final note = visibleNotes[index];
-
-                        final date =
-                            (note.updatedAt ?? note.createdAt)?.toLocal();
-                        final formattedTime = date != null
-                            ? DateFormat("dd MMM yyyy • HH:mm").format(date)
-                            : "";
-
-                        final preview = _previewFromHtml(note.content);
-
-                        return InkWell(
-                          onTap: () => _openEditNote(note),
-                          child: NoteCard(
-                            title: note.title,
-                            content: preview,
-                            category: "Workspace",
-                            time: formattedTime,
-                            isPinned: false,
-                          ),
-                        );
+                    return RefreshIndicator(
+                      onRefresh: () async {
+                        final ws =
+                            ref.read(workspaceViewModelProvider).selected;
+                        if (ws != null) {
+                          await ref
+                              .read(notesViewModelProvider.notifier)
+                              .refreshWorkspaceNotes(ws.id);
+                        }
                       },
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(top: 10, bottom: 120),
+                        itemCount: visibleNotes.length,
+                        itemBuilder: (context, index) {
+                          final note = visibleNotes[index];
+
+                          final date =
+                              (note.updatedAt ?? note.createdAt)?.toLocal();
+                          final formattedTime = date != null
+                              ? DateFormat("dd MMM yyyy • HH:mm").format(date)
+                              : "";
+
+                          final preview = _previewFromHtml(note.content);
+
+                          return Dismissible(
+                            key: ValueKey(note.id),
+                            direction: DismissDirection.endToStart,
+                            confirmDismiss: (_) async {
+                              await _confirmAndDeleteNotes([note.id]);
+                              // Return false — deletion is handled inside
+                              // _confirmAndDeleteNotes via the view model.
+                              return false;
+                            },
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.only(right: 24),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: const Icon(Icons.delete,
+                                  color: Colors.red, size: 28),
+                            ),
+                            child: GestureDetector(
+                              onLongPress: () => _toggleSelection(note.id),
+                              onTap: () {
+                                if (_isSelectionMode) {
+                                  _toggleSelection(note.id);
+                                } else {
+                                  _openEditNote(note);
+                                }
+                              },
+                              child: NoteCard(
+                                title: note.title,
+                                content: preview,
+                                category: _noteTypeLabel(note.type),
+                                time: formattedTime,
+                                isPinned: false,
+                                isSelected: _selectedNoteIds.contains(note.id),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
@@ -267,6 +579,66 @@ class _NotesListViewState extends ConsumerState<NotesListView> {
         ),
       ),
     );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required String? type,
+    IconData? icon,
+  }) {
+    final isActive = _activeFilter == type;
+    final chipColor = _filterColor(type);
+
+    return GestureDetector(
+      onTap: () => setState(() => _activeFilter = type),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive
+              ? chipColor.withOpacity(0.2)
+              : Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive
+                ? chipColor.withOpacity(0.6)
+                : Colors.white.withOpacity(0.12),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon,
+                  size: 14, color: isActive ? chipColor : Colors.white54),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? chipColor : Colors.white54,
+                fontSize: 13,
+                fontFamily: 'sf_pro',
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Color _filterColor(String? type) {
+    switch (type) {
+      case 'VOICE_TRANSCRIPT':
+        return const Color(0xFFFFB74D); // blue
+      case 'MEETING_SUMMARY':
+        return const Color(0xFF64B5F6); // amber
+      case 'MANUAL':
+        return const Color(0xFFAEFB2A); // green
+      default:
+        return Colors.white; // "All"
+    }
   }
 }
 

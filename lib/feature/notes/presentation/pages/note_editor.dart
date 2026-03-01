@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -14,8 +13,6 @@ import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 class NoteEditorPage extends ConsumerStatefulWidget {
   const NoteEditorPage({super.key, this.note});
 
-  /// null => create new
-  /// not null => edit
   final NoteEntity? note;
 
   @override
@@ -24,56 +21,46 @@ class NoteEditorPage extends ConsumerStatefulWidget {
 
 class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
   final _titleCtrl = TextEditingController();
-
   late QuillController _controller;
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
 
   bool _saving = false;
-
-  // Draft autosave (keeps your UX nice)
   Timer? _draftTimer;
   bool _draftDirty = false;
   bool _draftSaving = false;
 
   static const _draftDebounce = Duration(milliseconds: 700);
   static const _draftBoxName = "notes_drafts";
+  final Color _accentColor = const Color(0xFFB0B0B0);
 
-  String get _modeTitle => widget.note == null ? "New Note" : "Edit Note";
+  String get _modeTitle => widget.note == null ? "NEW NOTE" : "EDIT NOTE";
 
-  // draft key must differ per note
   String _draftKey(String workspaceId) {
-    if (widget.note == null) {
-      return "draft_create__ws_$workspaceId";
-    }
+    if (widget.note == null) return "draft_create__ws_$workspaceId";
     return "draft_edit__${widget.note!.id}__ws_$workspaceId";
   }
 
   @override
   void initState() {
     super.initState();
-
-    // start with empty editor, then load in postFrame (so workspace is ready)
     _controller = QuillController.basic();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final ws = ref.read(workspaceViewModelProvider).selected;
       final workspaceId = ws?.id;
 
-      // 1) prefill title/content from note if editing
       if (widget.note != null) {
         _titleCtrl.text = widget.note!.title;
         _loadHtmlIntoEditor(widget.note!.content);
       }
 
-      // 2) load draft (draft overrides existing content if exists)
       if (workspaceId != null) {
         await _loadDraft(workspaceId);
       }
 
-      // 3) attach draft listeners after initial fill
       _attachDraftListeners(workspaceId);
-      setState(() {});
+      if (mounted) setState(() {});
     });
   }
 
@@ -91,17 +78,13 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
 
   void _loadHtmlIntoEditor(String html) {
     try {
-      // Convert HTML -> Delta -> Document
       final delta = HtmlToDelta().convert(html);
       final doc = Document.fromDelta(delta);
-
       _controller = QuillController(
         document: doc,
         selection: const TextSelection.collapsed(offset: 0),
       );
     } catch (e) {
-      debugPrint("HTML -> Quill parse failed: $e");
-      // Fallback: put plain text into doc
       final plain = html.replaceAll(RegExp(r"<[^>]*>"), "").trim();
       _controller = QuillController(
         document: Document()..insert(0, plain),
@@ -115,9 +98,7 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
         _controller.document.toDelta().toJson().cast<Map<String, dynamic>>();
     return QuillDeltaToHtmlConverter(
       ops,
-      ConverterOptions(
-        multiLineParagraph: true,
-      ),
+      ConverterOptions(multiLineParagraph: true),
     ).convert();
   }
 
@@ -138,23 +119,17 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
 
   Future<void> _saveDraftNow() async {
     final ws = ref.read(workspaceViewModelProvider).selected;
-    final workspaceId = ws?.id;
-    if (workspaceId == null) return;
-
-    if (!_draftDirty) return;
+    if (ws?.id == null || !_draftDirty) return;
 
     if (mounted) setState(() => _draftSaving = true);
-
     try {
       final box = await Hive.openBox(_draftBoxName);
-      await box.put(_draftKey(workspaceId), {
+      await box.put(_draftKey(ws!.id), {
         "title": _titleCtrl.text,
         "delta": _controller.document.toDelta().toJson(),
         "updatedAt": DateTime.now().toIso8601String(),
       });
       _draftDirty = false;
-    } catch (e) {
-      debugPrint("Draft save error: $e");
     } finally {
       if (mounted) setState(() => _draftSaving = false);
     }
@@ -164,252 +139,229 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
     try {
       final box = await Hive.openBox(_draftBoxName);
       final raw = box.get(_draftKey(workspaceId));
-
       if (raw is Map) {
         if (raw["title"] != null) _titleCtrl.text = raw["title"].toString();
-
         final deltaJson = raw["delta"];
         if (deltaJson is List) {
-          // Draft uses Delta JSON -> Document.fromJson
           _controller = QuillController(
             document: Document.fromJson(deltaJson),
             selection: const TextSelection.collapsed(offset: 0),
           );
         }
       }
-    } catch (e) {
-      debugPrint("Draft load error: $e");
-    }
+    } catch (_) {}
   }
 
   Future<void> _clearDraft() async {
     final ws = ref.read(workspaceViewModelProvider).selected;
-    final workspaceId = ws?.id;
-    if (workspaceId == null) return;
-
+    if (ws == null) return;
     final box = await Hive.openBox(_draftBoxName);
-    await box.delete(_draftKey(workspaceId));
+    await box.delete(_draftKey(ws.id));
   }
 
-  // ===================== SAVE (CREATE/UPDATE) =====================
+  // ===================== SAVE =====================
 
   Future<void> _handleSave() async {
     final ws = ref.read(workspaceViewModelProvider).selected;
-    if (ws == null) {
-      SnackbarUtils.showError(context, "No workspace selected");
-      return;
-    }
+    if (ws == null) return;
 
     final title = _titleCtrl.text.trim();
-    if (title.isEmpty) {
-      SnackbarUtils.showError(context, "Title is required");
-      return;
-    }
-
-    if (_isEditorEmpty()) {
-      SnackbarUtils.showError(context, "Note is empty");
+    if (title.isEmpty || _isEditorEmpty()) {
+      SnackbarUtils.showError(context, "Title and content are required");
       return;
     }
 
     setState(() => _saving = true);
-
     try {
       await _saveDraftNow();
       final htmlContent = _docToHtml();
-
       final vm = ref.read(notesViewModelProvider.notifier);
 
-      if (widget.note == null) {
-        // CREATE
-        final created = await vm.createNote(
-          workspaceId: ws.id,
-          title: title,
-          content: htmlContent,
-        );
+      final result = widget.note == null
+          ? await vm.createNote(
+              workspaceId: ws.id, title: title, content: htmlContent)
+          : await vm.updateNote(
+              noteId: widget.note!.id, title: title, content: htmlContent);
 
-        if (!mounted) return;
-
-        if (created != null) {
-          await _clearDraft();
-          SnackbarUtils.showSuccess(context, "Note saved");
-          Navigator.pop(context, created);
-        } else {
-          SnackbarUtils.showError(
-            context,
-            ref.read(notesViewModelProvider).error ?? "Save failed",
-          );
-        }
-      } else {
-        // UPDATE (local-first should be handled in your repository)
-        final updated = await vm.updateNote(
-          noteId: widget.note!.id,
-          title: title,
-          content: htmlContent,
-        );
-
-        if (!mounted) return;
-
-        if (updated != null) {
-          await _clearDraft();
-          SnackbarUtils.showSuccess(context, "Note updated");
-          Navigator.pop(context, updated);
-        } else {
-          SnackbarUtils.showError(
-            context,
-            ref.read(notesViewModelProvider).error ?? "Update failed",
-          );
-        }
+      if (!mounted) return;
+      if (result != null) {
+        await _clearDraft();
+        Navigator.pop(context, result);
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  // ===================== UI =====================
-
   @override
   Widget build(BuildContext context) {
-    final workspaceName =
-        ref.watch(workspaceViewModelProvider).selected?.name ?? "No workspace";
-
     return Scaffold(
       extendBody: true,
-      backgroundColor: Colors.transparent,
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [Color(0xFF1E3A0F), Color(0xFF2F5D15), Color(0xFF224210)],
+            stops: [0.0, 0.4, 1.0],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // ======= APP BAR =======
+              // ======= TOP BAR =======
               Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white),
+                          color: Colors.white, size: 20),
                     ),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _modeTitle,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              fontFamily: 'sf_pro',
-                            ),
+                      child: Center(
+                        child: Text(
+                          _modeTitle,
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            letterSpacing: 2,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'sf_pro',
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                workspaceName,
-                                style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 12,
-                                  fontFamily: 'sf_pro',
-                                ),
-                              ),
-                              if (_draftSaving) ...[
-                                const SizedBox(width: 8),
-                                const Text(
-                                  "Saving draft...",
-                                  style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 12,
-                                    fontFamily: 'sf_pro',
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: _saving ? null : _handleSave,
-                      child: _saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text(
-                              "Save",
-                              style: TextStyle(
-                                color: Color(0xFFAEFB2A),
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'sf_pro',
-                              ),
-                            ),
-                    ),
+                    _saving
+                        ? SizedBox(
+                            width: 48,
+                            child: Center(
+                                child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        color: _accentColor, strokeWidth: 2))))
+                        : TextButton(
+                            onPressed: _handleSave,
+                            child: Text("SAVE",
+                                style: TextStyle(
+                                    color: _accentColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'sf_pro')),
+                          ),
                   ],
                 ),
               ),
 
-              // ======= TITLE =======
+              if (_draftSaving)
+                LinearProgressIndicator(
+                    backgroundColor: Colors.transparent,
+                    color: _accentColor.withOpacity(0.3),
+                    minHeight: 1),
+
+              // ======= TITLE FIELD (Glassmorphic) =======
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: TextField(
                   controller: _titleCtrl,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'sf_pro',
-                  ),
-                  cursorColor: const Color(0xFFAEFB2A),
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'sf_pro'),
+                  cursorColor: _accentColor,
                   decoration: InputDecoration(
                     hintText: "Title",
-                    hintStyle: const TextStyle(
-                      color: Colors.white30,
-                      fontFamily: 'sf_pro',
-                    ),
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                     filled: true,
-                    fillColor: Colors.black.withOpacity(0.20),
+                    fillColor: Colors.white.withOpacity(0.1),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          BorderSide(color: _accentColor.withOpacity(0.5)),
                     ),
                   ),
                 ),
               ),
 
-              // ======= TOOLBAR =======
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.20),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: QuillSimpleToolbar(
-                  controller: _controller,
-                  config: QuillSimpleToolbarConfig(
-                    showFontSize: false,
-                    showFontFamily: false,
-                    showColorButton: false,
-                    showBackgroundColorButton: false,
-                    buttonOptions: QuillSimpleToolbarButtonOptions(
-                      base: QuillToolbarBaseButtonOptions(
-                        iconTheme: const QuillIconTheme(
-                          iconButtonSelectedData: IconButtonData(
-                            color: Colors.black,
+              // ======= TOOLBAR (Glassmorphic) =======
+              SizedBox(
+                width: double.infinity,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: QuillSimpleToolbar(
+                    controller: _controller,
+                    config: QuillSimpleToolbarConfig(
+                      showBoldButton: true,
+                      showItalicButton: true,
+                      showUnderLineButton: false,
+                      showStrikeThrough: false,
+                      showListBullets: true,
+                      showListNumbers: false,
+                      showListCheck: true,
+                      showHeaderStyle: true,
+                      showQuote: false,
+                      showLink: true,
+                      showCodeBlock: true,
+                      showInlineCode: false,
+                      showFontSize: false,
+                      showFontFamily: false,
+                      showColorButton: false,
+                      showBackgroundColorButton: false,
+                      showAlignmentButtons: false,
+                      showSmallButton: false,
+                      showIndent: true,
+                      showSearchButton: false,
+                      showSubscript: false,
+                      showSuperscript: false,
+                      showClipboardCut: false,
+                      showClipboardCopy: false,
+                      showClipboardPaste: false,
+                      showDirection: false,
+                      showUndo: false,
+                      showRedo: false,
+                      showClearFormat: true,
+                      buttonOptions: QuillSimpleToolbarButtonOptions(
+                        base: QuillToolbarBaseButtonOptions(
+                          iconTheme: QuillIconTheme(
+                            iconButtonSelectedData: IconButtonData(
+                                color: Colors.white,
+                                style: IconButton.styleFrom(
+                                    backgroundColor: Colors.white12)),
+                            iconButtonUnselectedData:
+                                const IconButtonData(color: Colors.white54),
                           ),
-                          iconButtonUnselectedData: IconButtonData(
-                            color: Colors.white,
+                        ),
+                        selectHeaderStyleDropdownButton:
+                            QuillToolbarSelectHeaderStyleDropdownButtonOptions(
+                          textStyle: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontFamily: 'sf_pro',
                           ),
+                          width: 120,
                         ),
                       ),
                     ),
@@ -417,34 +369,42 @@ class _NoteEditorPageState extends ConsumerState<NoteEditorPage> {
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              // ======= EDITOR =======
+              // ======= EDITOR (Glassmorphic, fixed width) =======
               Expanded(
                 child: Container(
+                  width: double.infinity,
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.20),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: Colors.white
-                            .withOpacity(0.08)), // Added requested border
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
-                  child: DefaultTextStyle(
-                    // ✅ Forces all editor text to be white
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    child: QuillEditor(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      scrollController: _scrollController,
-                      config: const QuillEditorConfig(
-                        placeholder: "Start writing...",
-                        padding: EdgeInsets.all(16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: DefaultTextStyle(
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontFamily: 'sf_pro'),
+                      child: QuillEditor(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        scrollController: _scrollController,
+                        config: QuillEditorConfig(
+                          placeholder: "Write something brilliant...",
+                          padding: const EdgeInsets.all(20),
+                          textSelectionThemeData: TextSelectionThemeData(
+                            selectionColor: _accentColor.withOpacity(0.3),
+                            selectionHandleColor: _accentColor,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),
