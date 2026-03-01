@@ -12,53 +12,57 @@ class CheckWorkspaces extends ConsumerStatefulWidget {
 }
 
 class _CheckWorkspacesState extends ConsumerState<CheckWorkspaces> {
-  bool _ran = false;
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    if (_ran) return;
-    _ran = true;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _runRedirect();
-    });
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runRedirect());
   }
 
   Future<void> _runRedirect() async {
-    final ok = await ref
-        .read(workspaceViewModelProvider.notifier)
-        .fetchMyWorkspaces();
+    final ok =
+        await ref.read(workspaceViewModelProvider.notifier).fetchMyWorkspaces();
 
     if (!mounted) return;
 
-    final wsState = ref.read(workspaceViewModelProvider);
-
-    // If API failed, go onboarding fallback
     if (!ok) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const WorkspaceOnboardingPage()),
-      );
+      _go(const WorkspaceOnboardingPage());
       return;
     }
 
-    if (wsState.workspaces.isEmpty) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const WorkspaceOnboardingPage()),
-      );
+    // Read state AFTER fetch completes
+    final workspaces = ref.read(workspaceViewModelProvider).workspaces;
+
+    if (workspaces.isEmpty) {
+      _go(const WorkspaceOnboardingPage());
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardView()),
-      );
+      _go(const DashboardView());
     }
+  }
+
+  void _go(Widget page) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF2E3D28), Color(0xFF000000)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: Image.asset("assets/images/logo.png", width: 150),
+        ),
+      ),
+    );
   }
 }
