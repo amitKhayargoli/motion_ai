@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:motion_ai/feature/auth/data/models/auth_api_model.dart';
 import 'package:motion_ai/feature/auth/data/models/auth_hive_model.dart';
 
@@ -24,4 +26,5 @@ abstract interface class IAuthRemoteDataSource {
   Future<bool> updateUser(AuthApiModel user);
   Future<bool> deleteUser(String authId);
   Future<bool> isEmailExists(String email);
+  Future<String> uploadImage(File image);
 }

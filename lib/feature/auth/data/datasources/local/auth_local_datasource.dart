@@ -1,21 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:motion_ai/core/providers/providers.dart';
-import 'package:motion_ai/core/services/hive/hive_service.dart'
-    hide hiveServiceProvider;
-import 'package:motion_ai/core/services/storage/user_session_service.dart';
 import 'package:motion_ai/feature/auth/data/datasources/auth_datasource.dart';
+import 'package:motion_ai/core/services/hive/hive_service.dart';
+import 'package:motion_ai/core/services/storage/user_session_service.dart';
 import 'package:motion_ai/feature/auth/data/models/auth_hive_model.dart';
-
-final authLocalDatasourceProvider = Provider.autoDispose<IAuthLocalDataSource>((
-  ref,
-) {
-  final hiveService = ref.watch(hiveServiceProvider);
-  final userSessionService = ref.read(userSessionServiceProvider);
-  return AuthLocalDatasource(
-    hiveService: hiveService,
-    userSessionService: userSessionService,
-  );
-});
 
 class AuthLocalDatasource implements IAuthLocalDataSource {
   final HiveService hiveService;
@@ -34,59 +20,65 @@ class AuthLocalDatasource implements IAuthLocalDataSource {
 
   @override
   Future<AuthHiveModel?> login(String email, String password) async {
-    try {
-      final user = await hiveService.loginUser(email, password);
-      // user ko details lai shared prefs ma save garne
-      if (user != null) {
-        await userSessionService.saveUserSession(
-          userId: user.userId!,
-          userEmail: user.email,
-          username: user.username!,
-        );
-      }
+    final user = await hiveService.loginUser(email, password);
 
-      return user;
-    } catch (e) {
-      return Future.value(null);
+    if (user != null) {
+      await userSessionService.saveUserSession(
+        userId: user.userId ?? '',
+        userEmail: user.email,
+        username: user.username ?? user.email.split('@').first,
+      );
+
+      await hiveService.init();
+      await hiveService
+          .setActiveUser(user.userId ?? ''); // critical for session management
     }
+
+    return user;
   }
 
   @override
   Future<bool> logout() async {
-    await hiveService.logout();
+    await userSessionService.clearUserSession();
+    await hiveService.clearActiveUser();
+
+    // optional: clear audio cache
+    await hiveService.clearAudioFiles();
     return true;
   }
 
   @override
   Future<AuthHiveModel?> getCurrentUser() async {
-    return hiveService.getCurrentUser();
-  }
-
-  @override
-  Future<AuthHiveModel?> getUserById(String authId) async {
-    return hiveService.getUserById(authId);
-  }
-
-  @override
-  Future<AuthHiveModel?> getUserByEmail(String email) async {
+    final email = await userSessionService.getUserEmail();
+    if (email == null) return null;
     return hiveService.getUserByEmail(email);
   }
 
   @override
+  Future<bool> deleteUser(String authId) {
+    // TODO: implement deleteUser
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthHiveModel?> getUserByEmail(String email) {
+    // TODO: implement getUserByEmail
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthHiveModel?> getUserById(String authId) {
+    // TODO: implement getUserById
+    throw UnimplementedError();
+  }
+
+  @override
   Future<bool> isEmailExists(String email) async {
-    final user = await hiveService.getUserByEmail(email);
-    return user != null;
+    return await hiveService.isEmailExists(email);
   }
 
   @override
   Future<bool> updateUser(AuthHiveModel user) async {
-    await hiveService.updateUser(user);
-    return true;
-  }
-
-  @override
-  Future<bool> deleteUser(String authId) async {
-    await hiveService.deleteUser(authId);
-    return true;
+    return hiveService.updateUser(user);
   }
 }
