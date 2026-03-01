@@ -109,7 +109,7 @@ void main() {
       );
 
       // Assert
-      expect(params.props, [null, tEmail, tPassword, null]);
+      expect(params.props, [null, tEmail, tPassword, null, null]);
     });
   });
 }
