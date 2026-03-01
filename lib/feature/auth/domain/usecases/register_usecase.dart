@@ -8,13 +8,15 @@ import 'package:motion_ai/feature/auth/domain/entities/auth_entity.dart';
 import 'package:motion_ai/feature/auth/domain/repositories/auth_repository.dart';
 
 class RegisterParams extends Equatable {
+  final String? username;
   final String email;
   final String password;
 
-  const RegisterParams({required this.email, required this.password});
+  const RegisterParams(
+      {this.username, required this.email, required this.password});
 
   @override
-  List<Object?> get props => [email, password];
+  List<Object?> get props => [username, email, password];
 }
 
 // Create Provider
@@ -27,11 +29,12 @@ class RegisterUsecase implements UseCaseWithParams<bool, RegisterParams> {
   final IAuthRepository _authRepository;
 
   RegisterUsecase({required IAuthRepository authRepository})
-    : _authRepository = authRepository;
+      : _authRepository = authRepository;
 
   @override
   Future<Either<Failure, bool>> call(RegisterParams params) {
     final authEntity = AuthEntity(
+      username: params.username,
       email: params.email,
       password: params.password,
     );
