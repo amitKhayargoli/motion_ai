@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import 'package:motion_ai/core/constants/hive_table_constant.dart';
 import 'package:motion_ai/core/utils/snackbar_utils.dart';
 import 'package:motion_ai/core/widgets/custom_button.dart';
+import 'package:motion_ai/feature/auth/data/models/auth_hive_model.dart';
 import 'package:motion_ai/feature/auth/presentation/pages/login_page.dart';
 import 'package:motion_ai/feature/auth/presentation/state/auth_state.dart';
 import 'package:motion_ai/feature/auth/presentation/view_model/auth_viewmodel.dart';
-
-import '../../data/models/auth_hive_model.dart';
 
 class SignupPage extends ConsumerStatefulWidget {
   const SignupPage({super.key});
@@ -20,59 +20,62 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   final _formKey = GlobalKey<FormState>();
   bool _rememberMe = false;
   bool _passwordVisible = false;
+  late final TextEditingController _usernameController;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
-
-  Future<void> _handleSignup() async {
-    ref.read(authViewModelProvider.notifier).clearError();
-
-    if (_formKey.currentState!.validate()) {
-      ref
-          .read(authViewModelProvider.notifier)
-          .register(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
-    }
-    final box = Hive.box<AuthHiveModel>('authBox');
-    print('--- All Hive Users ---');
-    for (var user in box.values) {
-      print('Email: ${user.email}, Password: ${user.password}');
-    }
-  }
+  late final TextEditingController _confirmPasswordController;
 
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: 'johndoe@gmail.com');
-    _passwordController = TextEditingController(text: 'password');
+    _usernameController = TextEditingController();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
   }
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSignup() async {
+    ref.read(authViewModelProvider.notifier).clearError();
+
+    if (!_formKey.currentState!.validate()) return;
+
+    await ref.read(authViewModelProvider.notifier).register(
+          username: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authViewModelProvider);
 
-    // listen for auth state changes
-    // ref.read
-    // ref.watch
-
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
+      print("AUTH LISTEN => status=${next.status}, error=${next.errorMessage}");
+
       if (next.status == AuthStatus.error) {
         SnackbarUtils.showError(
           context,
           next.errorMessage ?? "Registration failed",
         );
-      } else if (next.status == AuthStatus.registered) {
-        SnackbarUtils.showSuccess(
+        return;
+      }
+
+      if (next.status == AuthStatus.registered) {
+        SnackbarUtils.showSuccess(context, "Registration Successful");
+
+        Navigator.pushReplacement(
           context,
-          next.errorMessage ?? "Registration Successful",
+          MaterialPageRoute(builder: (_) => const LoginPage()),
         );
       }
     });
@@ -132,12 +135,9 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                     ),
                     GestureDetector(
                       onTap: () {
-                        // Navigate to Sign Up screen
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const LoginPage(),
-                          ),
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
                         );
                       },
                       child: const Text(
@@ -158,14 +158,28 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   child: Column(
                     children: [
                       _buildTextField(
+                        label: 'Username',
+                        hint: 'johndoe',
+                        controller: _usernameController,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Username cannot be empty';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
                         label: 'Email',
+                        hint: 'johndoe@gmail.com',
                         controller: _emailController,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return 'Email cannot be empty';
                           }
-                          // Basic email regex
-                          final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          final emailRegex = RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          );
                           if (!emailRegex.hasMatch(value.trim())) {
                             return 'Enter a valid email';
                           }
@@ -173,147 +187,71 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                         },
                       ),
                       const SizedBox(height: 16),
-                        _buildTextField(
-                          label: 'Password',
-                          controller: _passwordController,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Password cannot be empty';
-                            }
-                            if (value.trim().length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
-                            return null;
-                          },
-                          obscureText: !_passwordVisible,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _passwordVisible
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              color: Colors.white54,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _passwordVisible = !_passwordVisible;
-                              });
-                            },
-                          ),
+                      _buildTextField(
+                        label: 'Password',
+                        hint: 'Enter your password',
+                        controller: _passwordController,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Password cannot be empty';
+                          }
+                          if (value.trim().length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                        obscureText: !_passwordVisible,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        label: 'Confirm Password',
+                        hint: 'Re-enter your password',
+                        controller: _confirmPasswordController,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          if (value.trim() != _passwordController.text.trim()) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                        obscureText: !_passwordVisible,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Theme(
-                          data: ThemeData(
-                            unselectedWidgetColor: Colors.white54,
-                          ),
-                          child: Checkbox(
-                            value: _rememberMe,
-                            onChanged: (value) {
-                              setState(() {
-                                _rememberMe = value ?? false;
-                              });
-                            },
-                            checkColor: Colors.black,
-                            activeColor: Colors.white,
-                            side: const BorderSide(color: Colors.white54),
-                          ),
-                        ),
-                        const Text(
-                          'Remember me',
-                          style: TextStyle(
-                            fontFamily: 'sf_pro',
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-
                 CustomButton(
                   text: 'Sign Up',
                   isLoading: authState.status == AuthStatus.loading,
                   onPressed: _handleSignup,
                 ),
-
-                const SizedBox(height: 12),
-                const Row(
+                const SizedBox(height: 10),
+                Row(
                   children: [
-                    Expanded(child: Divider(color: Colors.white24)),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        'Or',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontFamily: 'sf_pro',
-                        ),
+                    Checkbox(
+                      value: _passwordVisible,
+                      onChanged: (value) {
+                        setState(() {
+                          _passwordVisible = value ?? false;
+                        });
+                      },
+                      activeColor: const Color(0xFF98C149),
+                      checkColor: Colors.black,
+                      side: const BorderSide(color: Colors.white54),
+                    ),
+                    const Text(
+                      'Show password',
+                      style: TextStyle(
+                        fontFamily: 'sf_pro',
+                        color: Colors.white70,
+                        fontSize: 14,
                       ),
                     ),
-                    Expanded(child: Divider(color: Colors.white24)),
                   ],
                 ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    side: const BorderSide(color: Colors.white24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: Image.asset(
-                    'assets/images/google_logo.png',
-                    height: 24,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.g_mobiledata, color: Colors.white),
-                  ),
-                  label: const Text(
-                    'Continue with Google',
-                    style: TextStyle(
-                      fontFamily: 'sf_pro',
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: Image.asset(
-                    'assets/images/facebook_logo.png',
-                    height: 24,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.facebook, color: Color(0xFF1877F2)),
-                  ),
-                  label: const Text(
-                    'Continue with Facebook',
-                    style: TextStyle(
-                      fontFamily: 'sf_pro',
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
               ],
             ),
           ),
@@ -325,6 +263,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   Widget _buildTextField({
     required String label,
     required TextEditingController controller,
+    String? hint,
     bool obscureText = false,
     Widget? suffixIcon,
     String? Function(String?)? validator,
@@ -351,6 +290,12 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           ),
           validator: validator,
           decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              color: Colors.white38,
+              fontFamily: 'sf_pro',
+              fontSize: 16,
+            ),
             suffixIcon: suffixIcon,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,

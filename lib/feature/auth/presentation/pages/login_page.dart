@@ -6,6 +6,8 @@ import 'package:motion_ai/feature/auth/presentation/pages/signup_page.dart';
 import 'package:motion_ai/feature/auth/presentation/state/auth_state.dart';
 import 'package:motion_ai/feature/auth/presentation/view_model/auth_viewmodel.dart';
 import 'package:motion_ai/feature/home/presentation/pages/dashboard_view.dart';
+import 'package:motion_ai/feature/workspace/presentation/pages/check_workspaces.dart';
+import 'package:motion_ai/feature/workspace/presentation/pages/workspace_onboarding_page.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -24,8 +26,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: 'johndoe@gmail.com');
-    _passwordController = TextEditingController(text: 'password');
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
   }
 
   @override
@@ -37,9 +39,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      await ref
-          .read(authViewModelProvider.notifier)
-          .login(
+      await ref.read(authViewModelProvider.notifier).login(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
           );
@@ -52,12 +52,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
       if (next.status == AuthStatus.authenticated) {
-        // dashboard
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardView()),
+          MaterialPageRoute(builder: (_) => const CheckWorkspaces()),
         );
       } else if (next.status == AuthStatus.error && next.errorMessage != null) {
-        // error message
         SnackbarUtils.showError(context, next.errorMessage!);
       }
     });
@@ -143,156 +141,48 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     children: [
                       _buildTextField(
                         label: 'Email',
+                        hint: 'johndoe@gmail.com',
                         controller: _emailController,
                       ),
                       const SizedBox(height: 16),
                       _buildTextField(
                         label: 'Password',
+                        hint: 'Enter your password',
                         controller: _passwordController,
                         obscureText: !_passwordVisible,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _passwordVisible
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: Colors.white54,
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _passwordVisible = !_passwordVisible;
-                            });
-                          },
-                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Theme(
-                          data: ThemeData(
-                            unselectedWidgetColor: Colors.white54,
-                          ),
-                          child: Checkbox(
-                            value: _rememberMe,
-                            onChanged: (value) {
-                              setState(() {
-                                _rememberMe = value ?? false;
-                              });
-                            },
-                            checkColor: Colors.black,
-                            activeColor: Colors.white,
-                            side: const BorderSide(color: Colors.white54),
-                          ),
-                        ),
-                        const Text(
-                          'Remember me',
-                          style: TextStyle(
-                            fontFamily: 'sf_pro',
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          fontFamily: 'sf_pro',
-                          color: Color(0xFF6A9BEE),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
                 CustomButton(
                   text: 'Sign in',
                   isLoading: authState.status == AuthStatus.loading,
-                  onPressed: () {
-                    _handleLogin();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DashboardView(),
-                      ),
-                    );
-                  },
+                  onPressed: _handleLogin,
                 ),
-
                 const SizedBox(height: 12),
-                const Row(
+                Row(
                   children: [
-                    Expanded(child: Divider(color: Colors.white24)),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        'Or',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontFamily: 'sf_pro',
-                        ),
+                    Checkbox(
+                      value: _passwordVisible,
+                      onChanged: (value) {
+                        setState(() {
+                          _passwordVisible = value ?? false;
+                        });
+                      },
+                      activeColor: const Color(0xFF98C149),
+                      checkColor: Colors.black,
+                      side: const BorderSide(color: Colors.white54),
+                    ),
+                    const Text(
+                      'Show password',
+                      style: TextStyle(
+                        fontFamily: 'sf_pro',
+                        color: Colors.white70,
+                        fontSize: 14,
                       ),
                     ),
-                    Expanded(child: Divider(color: Colors.white24)),
                   ],
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    side: const BorderSide(color: Colors.white24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: Image.asset(
-                    'assets/images/google_logo.png',
-                    height: 24,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.g_mobiledata, color: Colors.white),
-                  ),
-                  label: const Text(
-                    'Continue with Google',
-                    style: TextStyle(
-                      fontFamily: 'sf_pro',
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: Image.asset(
-                    'assets/images/facebook_logo.png',
-                    height: 24,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.facebook, color: Color(0xFF1877F2)),
-                  ),
-                  label: const Text(
-                    'Continue with Facebook',
-                    style: TextStyle(
-                      fontFamily: 'sf_pro',
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -306,6 +196,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildTextField({
     required String label,
     required TextEditingController controller,
+    String? hint,
     bool obscureText = false,
     Widget? suffixIcon,
   }) {
@@ -330,6 +221,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             fontSize: 16,
           ),
           decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(
+              color: Colors.white38,
+              fontFamily: 'sf_pro',
+              fontSize: 16,
+            ),
             suffixIcon: suffixIcon,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
