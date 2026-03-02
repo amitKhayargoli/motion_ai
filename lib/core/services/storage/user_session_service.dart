@@ -22,7 +22,7 @@ class UserSessionService {
     await _prefs.setString(_keysUsername, username);
   }
 
-  Future<void> clearUserService() async {
+  Future<void> clearUserSession() async {
     await _prefs.remove(_keysUserId);
     await _prefs.remove(_keysUserEmail);
     await _prefs.remove(_keysIsLoggedIn);
