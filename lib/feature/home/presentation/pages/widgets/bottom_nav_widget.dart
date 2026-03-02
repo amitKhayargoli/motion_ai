@@ -1,9 +1,8 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:motion_ai/feature/home/presentation/pages/meetings_view.dart';
-import 'package:motion_ai/feature/home/presentation/pages/mindspace_view.dart';
-import 'package:motion_ai/feature/home/presentation/pages/notes_view.dart';
+import 'package:motion_ai/feature/rag_chatbot/presentation/pages/mindspace_view.dart';
+import 'package:motion_ai/feature/notes/presentation/pages/notes_view.dart';
 
 class BottomNavWidget extends StatelessWidget {
   int selectedIndex = 0;
@@ -32,7 +31,7 @@ class BottomNavWidget extends StatelessWidget {
                 _buildNavItem(icon: Icons.home_filled, label: 'Home', index: 0),
                 _buildNavItem(
                   icon: Icons.mic_none,
-                  label: 'Meetings',
+                  label: 'Recordings',
                   index: 1,
                 ),
                 _buildNavItem(
