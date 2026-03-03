@@ -18,11 +18,12 @@ class GradientScaffold extends StatelessWidget {
     this.useDashboardGradient = false, // default to onboarding gradient
   });
 
-  // Default onboarding linear gradient
+  // Default onboarding linear gradient (matches login/signup pages)
   static const LinearGradient onboardingGradient = LinearGradient(
-    colors: [Color(0xFF2E3D28), Color(0xFF000000)],
+    colors: [Color(0xFF273E00), Color(0xFF020200)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
+    stops: [0.0, 0.54],
   );
 
   // Default Dashboard Radial Gradient

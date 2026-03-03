@@ -13,6 +13,7 @@ abstract class INoteLocalDataSource {
   Future<List<NoteHiveModel>> getPendingWorkspaceNotes(String workspaceId);
   Future<void> deleteNote(String noteId);
   Future<void> clearWorkspaceNotes(String workspaceId);
+  Future<NoteHiveModel?> getTranscriptByAudioFileId(String audioFileId);
 }
 
 abstract class INoteRemoteDataSource {
@@ -28,4 +29,12 @@ abstract class INoteRemoteDataSource {
     required String content,
   });
   Future<void> deleteNote(String noteId);
+
+  Future<NoteApiModel?> getTranscriptByAudioFileId(String audioFileId);
+
+  Future<NoteApiModel> transcribeAudio({
+    required String audioFileId,
+    required String workspaceId,
+    String? noteTitle,
+  });
 }
