@@ -76,4 +76,37 @@ class NoteRemoteDatasource implements INoteRemoteDataSource {
   Future<void> deleteNote(String noteId) async {
     await _api.delete(ApiEndpoints.noteById(noteId));
   }
+
+  @override
+  Future<NoteApiModel?> getTranscriptByAudioFileId(String audioFileId) async {
+    final res =
+        await _api.get(ApiEndpoints.transcriptByAudioFileId(audioFileId));
+    final data = res.data;
+
+    // your backend returns { success:true, data: note|null } maybe
+    final payload = data is Map ? data['data'] : null;
+    if (payload == null) return null;
+    return NoteApiModel.fromJson(Map<String, dynamic>.from(payload));
+  }
+
+  // ================= TRANSCRIBE AUDIO =================
+  @override
+  Future<NoteApiModel> transcribeAudio({
+    required String audioFileId,
+    required String workspaceId,
+    String? noteTitle,
+  }) async {
+    final res = await _api.post(
+      ApiEndpoints.transcribeAudio(audioFileId),
+      data: {
+        "workspaceId": workspaceId,
+        if (noteTitle != null && noteTitle.isNotEmpty) "noteTitle": noteTitle,
+      },
+    );
+
+    final data = _extractData(res.data);
+    // backend returns { note: {...}, language: "..." }
+    final noteJson = data is Map ? data['note'] : data;
+    return NoteApiModel.fromJson(Map<String, dynamic>.from(noteJson));
+  }
 }

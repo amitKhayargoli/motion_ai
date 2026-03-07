@@ -52,8 +52,87 @@ class MeetingNotesScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 60),
-            Image.asset('assets/images/meeting_notes.png'),
+            const SizedBox(height: 40),
+            Container(
+              width: 200,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xFF2A2A2A)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Meeting header
+                  Row(
+                    children: [
+                      Icon(Icons.mic, color: Color(0xFFAEFB2A), size: 20),
+                      SizedBox(width: 10),
+                      Container(
+                        width: 100,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Transcript line
+                  Row(
+                    children: [
+                      Icon(Icons.notes, color: Color(0xFFAEFB2A), size: 20),
+                      SizedBox(width: 10),
+                      Container(
+                        width: 70,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Summary line
+                  Row(
+                    children: [
+                      Icon(Icons.summarize_outlined,
+                          color: Colors.white38, size: 20),
+                      SizedBox(width: 10),
+                      Container(
+                        width: 85,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Transcription indicator
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.graphic_eq,
+                          color: Color(0xFFAEFB2A), size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'Transcribing',
+                        style: TextStyle(
+                          fontFamily: 'sf_pro',
+                          color: Color(0xFFAEFB2A),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
 
             const Spacer(flex: 3),
 

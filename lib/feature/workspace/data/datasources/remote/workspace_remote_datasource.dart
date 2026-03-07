@@ -59,6 +59,17 @@ class WorkspaceRemoteDataSource implements IWorkspaceRemoteDataSource {
   }
 
   @override
+  Future<WorkspaceApiModel> updateWorkspace(String id, String name) async {
+    final res = await _api.put(
+      ApiEndpoints.updateWorkspace(id),
+      data: {'name': name},
+    );
+
+    final data = _extractData(res.data);
+    return WorkspaceApiModel.fromJson(data);
+  }
+
+  @override
   Future<void> deleteWorkspace(String id) async {
     await _api.delete(ApiEndpoints.deleteWorkspace(id));
   }

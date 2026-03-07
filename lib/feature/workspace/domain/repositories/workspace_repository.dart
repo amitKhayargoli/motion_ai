@@ -9,5 +9,8 @@ abstract class IWorkspaceRepository {
 
   Future<Either<Failure, List<WorkspaceEntity>>> getMyWorkspaces();
 
+  Future<Either<Failure, WorkspaceEntity>> updateWorkspace(
+      String workspaceId, String name);
+
   Future<Either<Failure, bool>> deleteWorkspace(String workspaceId);
 }

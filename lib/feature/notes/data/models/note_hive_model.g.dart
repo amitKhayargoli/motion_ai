@@ -24,15 +24,18 @@ class NoteHiveModelAdapter extends TypeAdapter<NoteHiveModel> {
       summary: fields[4] as String?,
       createdAt: fields[5] as DateTime?,
       updatedAt: fields[6] as DateTime?,
-      syncStatus: (fields[7] as int?) ?? 0,
+      syncStatus: fields[7] as int,
       serverId: fields[8] as String?,
+      audioFileId: fields[9] as String?,
+      type: fields[10] as String?,
+      status: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, NoteHiveModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +53,13 @@ class NoteHiveModelAdapter extends TypeAdapter<NoteHiveModel> {
       ..writeByte(7)
       ..write(obj.syncStatus)
       ..writeByte(8)
-      ..write(obj.serverId);
+      ..write(obj.serverId)
+      ..writeByte(9)
+      ..write(obj.audioFileId)
+      ..writeByte(10)
+      ..write(obj.type)
+      ..writeByte(11)
+      ..write(obj.status);
   }
 
   @override

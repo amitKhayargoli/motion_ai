@@ -20,16 +20,18 @@ class AuthHiveModel extends HiveObject {
   //username
   @HiveField(4)
   final String? username;
+  @HiveField(5)
+  final String? profilePicture;
 
   AuthHiveModel({
     String? userId,
     required this.email,
     required this.password,
     this.username,
-
+    this.profilePicture,
     DateTime? createdAt,
-  }) : userId = userId ?? Uuid().v4(),
-       createdAt = createdAt ?? DateTime.now();
+  })  : userId = userId ?? Uuid().v4(),
+        createdAt = createdAt ?? DateTime.now();
 
   AuthEntity toEntity() {
     return AuthEntity(
@@ -38,6 +40,7 @@ class AuthHiveModel extends HiveObject {
       password: password,
       createdAt: createdAt,
       username: username,
+      profilePicture: profilePicture,
     );
   }
 
@@ -48,6 +51,7 @@ class AuthHiveModel extends HiveObject {
       username: entity.username,
       userId: entity.userId,
       createdAt: entity.createdAt,
+      profilePicture: entity.profilePicture,
     );
   }
 
