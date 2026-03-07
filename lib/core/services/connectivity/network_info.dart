@@ -14,7 +14,7 @@ class NetworkInfo implements INetworkInfo {
   final Connectivity _connectivity;
 
   NetworkInfo({required Connectivity connectivity})
-    : _connectivity = connectivity;
+      : _connectivity = connectivity;
 
   @override
   Future<bool> get isConnected async {

@@ -6,7 +6,8 @@ import 'package:motion_ai/feature/notes/domain/repositories/notes_repository.dar
 
 class GetWorkspaceNotesParams {
   final String workspaceId;
-  const GetWorkspaceNotesParams(this.workspaceId);
+  final bool forceRefresh;
+  const GetWorkspaceNotesParams(this.workspaceId, {this.forceRefresh = false});
 }
 
 class GetWorkspaceNotesUseCase
@@ -19,6 +20,9 @@ class GetWorkspaceNotesUseCase
   Future<Either<Failure, List<NoteEntity>>> call(
     GetWorkspaceNotesParams params,
   ) {
-    return repository.getWorkspaceNotes(params.workspaceId);
+    return repository.getWorkspaceNotes(
+      params.workspaceId,
+      forceRefresh: params.forceRefresh,
+    );
   }
 }

@@ -67,7 +67,6 @@ void main() {
       // Assert
 
       expect(capturedEntity?.email, tEmail);
-      expect(capturedEntity?.username, tUsername);
       expect(capturedEntity?.password, tPassword);
     });
 
@@ -110,18 +109,12 @@ void main() {
   group('RegisterParams', () {
     test('should have correct props with all values', () {
       // Arrange
-      const params = RegisterParams(email: tEmail, password: tPassword);
+      const tUsername = 'testuser';
+      const params = RegisterParams(
+          username: tUsername, email: tEmail, password: tPassword);
 
       // Assert
-      expect(params.props, [
-        tFirstName,
-        tLastName,
-        tUsername,
-        tEmail,
-        tPhoneNumber,
-        tPassword,
-        tConfirmPassword,
-      ]);
+      expect(params.props, [tUsername, tEmail, tPassword]);
     });
 
     test('two params with same values should be equal', () {

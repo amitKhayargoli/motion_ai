@@ -1,20 +1,24 @@
 import 'dart:async';
-import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:motion_ai/core/providers/providers.dart';
+import 'package:motion_ai/core/services/connectivity/connectivity_stream_provider.dart';
+import 'package:motion_ai/core/services/sensor/proximity_wave_service.dart';
+import 'package:motion_ai/core/sync/notes_auto_sync.dart';
+import 'package:motion_ai/core/sync/rag_chat_auto_sync.dart';
+import 'package:motion_ai/core/sync/audio_auto_sync.dart';
+import 'package:motion_ai/core/sync/tasks_auto_sync.dart';
 import 'package:motion_ai/core/utils/snackbar_utils.dart';
-import 'package:motion_ai/feature/audio_file/data/models/audio_file_hive_model.dart';
 import 'package:motion_ai/feature/audio_file/presentation/view_model/audio_view_model.dart';
+import 'package:motion_ai/feature/audio_file/presentation/pages/recordings_view.dart';
+import 'package:motion_ai/feature/audio_file/presentation/pages/voice_recorder_page.dart';
 import 'package:motion_ai/feature/home/presentation/pages/home_view.dart';
-import 'package:motion_ai/feature/home/presentation/pages/meetings_view.dart';
-import 'package:motion_ai/feature/home/presentation/pages/mindspace_view.dart';
-import 'package:motion_ai/feature/home/presentation/pages/notes_view.dart';
+import 'package:motion_ai/feature/home/presentation/providers/wave_to_switch_provider.dart';
+import 'package:motion_ai/feature/rag_chatbot/presentation/pages/mindspace_view.dart';
+import 'package:motion_ai/feature/notes/presentation/pages/notes_view.dart';
 import 'package:motion_ai/feature/home/presentation/pages/widgets/bottom_nav_widget.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:uuid/uuid.dart';
+import 'package:motion_ai/feature/notes/presentation/pages/note_editor.dart';
+import 'package:motion_ai/feature/workspace/presentation/view_model/workspace_view_model.dart';
 
 class DashboardView extends ConsumerStatefulWidget {
   const DashboardView({super.key});
@@ -24,234 +28,186 @@ class DashboardView extends ConsumerStatefulWidget {
 }
 
 class _DashboardViewState extends ConsumerState<DashboardView> {
-  // --- Recording Logic Variables ---
-  final recorder = FlutterSoundRecorder();
-  bool isRecording = false;
-  bool isRecorderReady = false;
   int _selectedIndex = 0;
 
-  // Timer Logic
-  Timer? _stopwatchTimer;
-  int _secondsElapsed = 0;
+  ProviderSubscription<dynamic>? _sub;
+  late final ProximityWaveService _proximityService;
 
   @override
   void initState() {
     super.initState();
-    _initRecorder();
+    _sub = ref.listenManual(
+      connectivityStreamProvider,
+      (previous, next) {
+        if (next.isLoading || next.hasError) return;
+        final results = next.value;
+        if (results == null) return;
+
+        if (!results.contains(ConnectivityResult.none)) {
+          ref.read(notesAutoSyncProvider.notifier).trySync();
+          ref.read(ragChatAutoSyncProvider.notifier).trySync();
+          ref.read(tasksAutoSyncProvider.notifier).trySync();
+          ref.read(audioAutoSyncProvider.notifier).trySync().then((_) {
+            ref.read(audioViewModelProvider.notifier).reloadFromLocal();
+          });
+        }
+      },
+    );
+
+    _proximityService = ref.read(proximityWaveServiceProvider);
+    _startProximityIfEnabled();
+
+    ref.listenManual<bool>(
+      waveToSwitchEnabledProvider,
+      (previous, next) {
+        if (next) {
+          _startProximityIfEnabled();
+        } else {
+          _proximityService.stopListening();
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
-    recorder.closeRecorder();
-    _stopwatchTimer?.cancel();
+    _sub?.close();
+    _proximityService.stopListening();
     super.dispose();
   }
 
-  // --- Core Methods ---
+  // ================== PROXIMITY SENSOR ==================
+  void _startProximityIfEnabled() {
+    final enabled = ref.read(waveToSwitchEnabledProvider);
+    if (!enabled) return;
+    if (_proximityService.isListening) return;
 
-  Future<void> _initRecorder() async {
-    try {
-      final status = await Permission.microphone.request();
-      if (status != PermissionStatus.granted) {
-        throw 'Microphone permission not granted';
-      }
-      await recorder.openRecorder();
-      setState(() => isRecorderReady = true); // Set ready after opening
-    } catch (e) {
-      debugPrint("Error initializing recorder: $e");
-      SnackbarUtils.showError(context, 'Failed to initialize recorder: $e');
-    }
-  }
+    _proximityService.startListening(
+      onWaveDetected: () {
+        if (!mounted) return;
 
-  void _startTimer() {
-    _secondsElapsed = 0;
-    _stopwatchTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() => _secondsElapsed++);
-    });
-  }
+        // Only respond to proximity wave when DashboardView is the top route
+        // (i.e. user is on one of the four bottom nav pages, not a sub-page).
+        final route = ModalRoute.of(context);
+        if (route == null || !route.isCurrent) return;
 
-  String _formatDuration(int seconds) {
-    final minutes = (seconds / 60).floor().toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return "$minutes:$secs";
-  }
+        final nextWs = ref
+            .read(workspaceViewModelProvider.notifier)
+            .cycleToNextWorkspace();
 
-  Future<void> _handleStartRecording() async {
-    if (!isRecorderReady) {
-      SnackbarUtils.showError(context, 'Recorder not ready. Please wait.');
-      return;
-    }
-
-    try {
-      final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/${const Uuid().v4()}.aac';
-      await recorder.startRecorder(toFile: filePath, codec: Codec.aacADTS);
-
-      _startTimer();
-      setState(() => isRecording = true);
-    } catch (e) {
-      debugPrint("Error starting record: $e");
-      SnackbarUtils.showError(context, 'Failed to start recording: $e');
-    }
-  }
-
-  Future<void> _handleStopRecording() async {
-    try {
-      final path = await recorder.stopRecorder();
-      _stopwatchTimer?.cancel();
-      setState(() => isRecording = false);
-
-      if (path != null) {
-        // Trigger the upload logic via the ViewModel
-        final viewModel = ref.read(audioViewModelProvider.notifier);
-        await viewModel.uploadAudio(
-          filePath: path,
-          durationSeconds: _secondsElapsed,
-        );
-
-        SnackbarUtils.showSuccess(context, 'Recording saved and uploading...');
-      }
-    } catch (e) {
-      debugPrint("Error stopping record: $e");
-      SnackbarUtils.showError(context, 'Failed to stop recording: $e');
-    }
+        if (nextWs != null && mounted) {
+          SnackbarUtils.showSuccess(
+            context,
+            'Switched to ${nextWs.name}',
+          );
+        }
+      },
+    );
   }
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
   }
 
-  List<Widget> pages = [
-    const HomeView(),
-    const MeetingsView(),
-    const MindspaceView(),
-    const NotesListView(),
-  ];
+  List<Widget> get pages => [
+        HomeView(onViewAllRecordings: () => _onItemTapped(1)),
+        const RecordingsView(),
+        const MindspaceView(),
+        const NotesListView(),
+      ];
+
+  Future<void> _openCreateNote() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NoteEditorPage()),
+    );
+  }
+
+  void _openVoiceRecorder() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const VoiceRecorderPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final double expandedWidth = MediaQuery.of(context).size.width - 40;
+    ref.listen<AsyncValue<List<ConnectivityResult>>>(
+      connectivityStreamProvider,
+      (prev, next) {
+        next.whenData((results) {
+          if (!results.contains(ConnectivityResult.none)) {
+            ref.read(notesAutoSyncProvider.notifier).trySync();
+            ref.read(ragChatAutoSyncProvider.notifier).trySync();
+            ref.read(tasksAutoSyncProvider.notifier).trySync();
+            ref.read(audioAutoSyncProvider.notifier).trySync().then((_) {
+              ref.read(audioViewModelProvider.notifier).reloadFromLocal();
+            });
+          }
+        });
+      },
+    );
 
     return Scaffold(
       extendBody: true,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: (_selectedIndex == 0 || _selectedIndex == 3)
-          ? AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.fastOutSlowIn,
-              width: isRecording ? expandedWidth : 140,
-              height: 72,
-              decoration: BoxDecoration(
-                color: isRecording
-                    ? const Color(0xFFE8EBF9)
-                    : const Color(0xFF3F5F00),
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: isRecording ? _buildRecordingUI() : _buildIdleUI(),
-                ),
-              ),
-            )
-          : null,
+      floatingActionButton: _selectedIndex == 1
+          ? _recordFab()
+          : _selectedIndex == 3
+              ? _createNoteFab()
+              : null,
       bottomNavigationBar: BottomNavWidget(
         selectedIndex: _selectedIndex,
         onItemTapped: _onItemTapped,
       ),
-      body: pages[_selectedIndex],
-    );
-  }
-
-  Widget _buildIdleUI() {
-    return InkWell(
-      key: const ValueKey('idle'),
-      onTap: isRecorderReady
-          ? _handleStartRecording
-          : null, // Disable if not ready
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.graphic_eq,
-            color: isRecorderReady
-                ? Colors.white
-                : Colors.white54, // Visual feedback
-            size: 24,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            isRecorderReady ? "Record" : "Initializing...",
-            style: TextStyle(
-              color: isRecorderReady ? Colors.white : Colors.white54,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: pages,
       ),
     );
   }
 
-  Widget _buildRecordingUI() {
-    return Row(
-      key: const ValueKey('recording'),
-      children: [
-        const Icon(Icons.graphic_eq, color: Color(0xFF3F5F00), size: 28),
-        const SizedBox(width: 12),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _formatDuration(_secondsElapsed),
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Text(
-              "Recording",
-              style: TextStyle(
-                color: Colors.black54,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+  // ================== RECORD FAB ==================
+  Widget _recordFab() {
+    return FloatingActionButton.extended(
+      heroTag: 'record_fab',
+      onPressed: _openVoiceRecorder,
+      backgroundColor: const Color(0xFF3F5F00),
+      icon: const Icon(Icons.mic, color: Colors.white, size: 24),
+      label: const Text(
+        "Record",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'sf_pro',
         ),
-        const Spacer(),
-        CircleAvatar(
-          backgroundColor: Colors.black12,
-          radius: 20,
-          child: IconButton(
-            icon: const Icon(Icons.mic, color: Colors.black87, size: 20),
-            onPressed: () {}, // Implement mute logic if needed
-          ),
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
+      ),
+    );
+  }
+
+  // ================== CREATE NOTE FAB (NOTES) ==================
+  Widget _createNoteFab() {
+    return FloatingActionButton.extended(
+      heroTag: 'note_fab',
+      onPressed: _openCreateNote,
+      backgroundColor: const Color(0xFF3F5F00),
+      icon: const Icon(Icons.edit_note, color: Colors.white, size: 26),
+      label: const Text(
+        "New Note",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'sf_pro',
         ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: _handleStopRecording,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFF3F5F00),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.stop, color: Colors.white, size: 20),
-          ),
-        ),
-      ],
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
+      ),
     );
   }
 }

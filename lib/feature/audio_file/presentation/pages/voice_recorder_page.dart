@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:motion_ai/core/services/sensor/lift_detection_service.dart';
 import 'package:motion_ai/feature/audio_file/presentation/providers/lift_to_stop_provider.dart';
+import 'package:motion_ai/feature/audio_file/presentation/providers/recording_providers.dart';
 import 'package:motion_ai/feature/audio_file/presentation/view_model/audio_view_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -92,6 +93,7 @@ class _VoiceRecorderPageState extends ConsumerState<VoiceRecorderPage>
       _isRecording = true;
       _hasRecorded = false;
     });
+    ref.read(recordingStateProvider.notifier).state = RecordingState.recording;
 
     // Start lift detection after 3s so the user can place the phone down
     final liftEnabled = ref.read(liftToStopEnabledProvider);
@@ -123,6 +125,7 @@ class _VoiceRecorderPageState extends ConsumerState<VoiceRecorderPage>
       _hasRecorded = true;
       _liftToStopActive = false;
     });
+    ref.read(recordingStateProvider.notifier).state = RecordingState.idle;
 
     if (path != null && mounted) {
       _showNamingDialog(path);

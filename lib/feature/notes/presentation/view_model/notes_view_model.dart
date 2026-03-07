@@ -19,7 +19,7 @@ class NotesViewModel extends Notifier<NotesState> {
   // ===== Helpers
   void clearError() => state = state.copyWith(clearError: true);
 
-  // ===== Fetch workspace notes
+  // ===== Fetch workspace notes (local only, fast)
   Future<bool> fetchWorkspaceNotes(String workspaceId) async {
     // Avoid refetching same workspace unnecessarily
     if (state.workspaceId == workspaceId &&
@@ -43,8 +43,42 @@ class NotesViewModel extends Notifier<NotesState> {
       },
       (list) {
         // newest first (optional)
-        final sorted = [...list]
-          ..sort((a, b) {
+        final sorted = [...list]..sort((a, b) {
+            final ad = a.updatedAt ?? a.createdAt ?? DateTime(0);
+            final bd = b.updatedAt ?? b.createdAt ?? DateTime(0);
+            return bd.compareTo(ad);
+          });
+
+        state = state.copyWith(
+          status: NotesStatus.loaded,
+          notes: sorted,
+          workspaceId: workspaceId,
+        );
+        return true;
+      },
+    );
+  }
+
+  // ===== Refresh workspace notes (pulls from remote, then returns local)
+  Future<bool> refreshWorkspaceNotes(String workspaceId) async {
+    state = state.copyWith(
+      status: NotesStatus.loading,
+      workspaceId: workspaceId,
+      clearError: true,
+    );
+
+    final usecase = ref.read(getWorkspaceNotesUseCaseProvider);
+    final res = await usecase(
+      GetWorkspaceNotesParams(workspaceId, forceRefresh: true),
+    );
+
+    return res.fold(
+      (f) {
+        state = state.copyWith(status: NotesStatus.error, error: f.message);
+        return false;
+      },
+      (list) {
+        final sorted = [...list]..sort((a, b) {
             final ad = a.updatedAt ?? a.createdAt ?? DateTime(0);
             final bd = b.updatedAt ?? b.createdAt ?? DateTime(0);
             return bd.compareTo(ad);
